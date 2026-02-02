@@ -1,0 +1,5 @@
+version: "0.1.0"
+description: "ZDT X42S motor CAN/TTL protocol library[EMM firmware]"
+dependencies:
+  idf:
+    version: ">=5.0"

@@ -1,0 +1,32 @@
+menu "ZDT Test Configuration"
+
+    config ZDT_TEST_HARDWARE
+        bool "Enable hardware tests (requires CAN transceiver and motor)"
+        default n
+        help
+            启用此选项以运行需要实际硬件的测试。
+            需要连接CAN收发器和ZDT电机。
+
+    config ZDT_TEST_CAN_TX_GPIO
+        int "CAN TX GPIO"
+        default 21
+        depends on ZDT_TEST_HARDWARE
+        help
+            CAN发送引脚
+
+    config ZDT_TEST_CAN_RX_GPIO
+        int "CAN RX GPIO"
+        default 22
+        depends on ZDT_TEST_HARDWARE
+        help
+            CAN接收引脚
+
+    config ZDT_TEST_MOTOR_ADDR
+        int "Motor address for testing"
+        default 1
+        range 1 255
+        depends on ZDT_TEST_HARDWARE
+        help
+            用于测试的电机地址
+
+endmenu
