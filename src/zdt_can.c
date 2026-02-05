@@ -421,7 +421,7 @@ int zdt_parse_position_response(const zdt_response_t *response,
   }
 
   position->angle_raw = read_i32_be(response->data);
-  position->angle_deg = zdt_01deg_to_deg(position->angle_raw);
+  position->angle_deg = position->angle_raw * 360.0f / 16384.0f;
 
   return ZDT_OK;
 }
@@ -747,7 +747,7 @@ zdt_error_t zdt_set_position(zdt_handle_t handle, uint8_t addr,
   zdt_sync_flag_t sync = sync_cache ? ZDT_SYNC_CACHE : ZDT_SYNC_IMMEDIATE;
 
   zdt_build_position_mode(addr, dir, (uint16_t)speed_rpm, default_acc,
-                          zdt_deg_to_01deg(angle_deg), mode, sync, &cmd);
+                          (int32_t)(angle_deg * 16384.0f / 360.0f), mode, sync, &cmd);
 
   return zdt_can_send_cmd(handle, addr, &cmd, &response);
 }

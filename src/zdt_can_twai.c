@@ -151,7 +151,7 @@ static int twai_send(void *context, const zdt_can_driver_msg_t *msg) {
     return 0;
 }
 
-static int twai_receive(void *context, zdt_can_driver_msg_t *msg) {
+static int twai_driver_receive(void *context, zdt_can_driver_msg_t *msg) {
     if (!context || !msg) {
         return -1;
     }
@@ -199,7 +199,7 @@ static const zdt_can_driver_t twai_driver = {
     .init = twai_init,
     .deinit = twai_deinit,
     .send = twai_send,
-    .receive = twai_receive,
+    .receive = twai_driver_receive,
 };
 
 const zdt_can_driver_t* zdt_get_twai_driver(void) {
