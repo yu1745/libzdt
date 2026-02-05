@@ -234,6 +234,22 @@ int zdt_build_read_config(uint8_t addr, zdt_cmd_buffer_t *buf) {
   return 3;
 }
 
+int zdt_build_timed_return(uint8_t addr, uint8_t info_func_code,
+                           uint16_t interval_ms, zdt_cmd_buffer_t *buf) {
+  if (!buf)
+    return ZDT_ERR_INVALID_PARAM;
+
+  buf->data[0] = addr;
+  buf->data[1] = ZDT_CMD_TIMED_RETURN;
+  buf->data[2] = ZDT_AUX_TIMED_RETURN;
+  buf->data[3] = info_func_code;
+  write_u16_be(&buf->data[4], interval_ms);
+  buf->data[6] = ZDT_CHECKSUM;
+  buf->len = 7;
+
+  return 7;
+}
+
 /* ============================================================================
  * EMM固件运动控制命令构建
  * ========================================================================== */
@@ -483,77 +499,59 @@ void zdt_print_can_msg(const zdt_can_msg_t *msg) {
 }
 
 /* ============================================================================
- * ESP-IDF TWAI驱动集成 (需要CONFIG_IDF_TARGET)
+ * ESP-IDF CAN驱动集成 (需要CONFIG_IDF_TARGET)
  * ========================================================================== */
 
 #ifdef CONFIG_IDF_TARGET
 
-#include "driver/twai.h"
+#include "zdt_can_driver.h"
 #include "esp_log.h"
-#include "freertos/FreeRTOS.h"
-#include "freertos/semphr.h"
+#include <stdlib.h>
 
 static const char *TAG = "zdt_can";
 
 /** 内部句柄结构 */
 struct zdt_handle_s {
-  zdt_can_config_t config;
-  SemaphoreHandle_t mutex;
-  bool initialized;
+  const zdt_can_driver_t *driver;
+  void *driver_context;
 };
 
-zdt_error_t zdt_can_init(const zdt_can_config_t *config, zdt_handle_t *handle) {
+zdt_error_t zdt_can_init(const zdt_can_config_t *config,
+                         const zdt_can_driver_t *driver,
+                         zdt_handle_t *handle) {
   if (!config || !handle) {
+    return ZDT_ERR_INVALID_PARAM;
+  }
+
+  if (!driver) {
+    ESP_LOGE(TAG, "Driver not provided");
     return ZDT_ERR_INVALID_PARAM;
   }
 
   struct zdt_handle_s *h = calloc(1, sizeof(struct zdt_handle_s));
   if (!h) {
+    ESP_LOGE(TAG, "Failed to allocate handle");
     return ZDT_ERR_INVALID_PARAM;
   }
 
-  h->config = *config;
-  h->mutex = xSemaphoreCreateMutex();
-  if (!h->mutex) {
+  h->driver = driver;
+
+  // 映射配置到驱动配置
+  zdt_can_driver_config_t driver_config = {
+      .tx_gpio = config->tx_gpio,
+      .rx_gpio = config->rx_gpio,
+      .bitrate = config->bitrate,
+      .tx_timeout_ms = config->tx_timeout_ms,
+      .rx_timeout_ms = config->rx_timeout_ms,
+  };
+
+  // 初始化驱动
+  int ret = zdt_driver_init(h->driver, &driver_config, &h->driver_context);
+  if (ret != 0) {
     free(h);
-    return ZDT_ERR_INVALID_PARAM;
+    return (zdt_error_t)ret;
   }
 
-  // 配置TWAI
-  twai_general_config_t g_config = TWAI_GENERAL_CONFIG_DEFAULT(
-      config->tx_gpio, config->rx_gpio, TWAI_MODE_NORMAL);
-
-  twai_timing_config_t t_config;
-  if (config->bitrate == 250000) {
-    t_config = (twai_timing_config_t)TWAI_TIMING_CONFIG_250KBITS();
-  } else if (config->bitrate == 500000) {
-    t_config = (twai_timing_config_t)TWAI_TIMING_CONFIG_500KBITS();
-  } else if (config->bitrate == 1000000) {
-    t_config = (twai_timing_config_t)TWAI_TIMING_CONFIG_1MBITS();
-  } else {
-    t_config = (twai_timing_config_t)TWAI_TIMING_CONFIG_500KBITS();
-  }
-
-  twai_filter_config_t f_config = TWAI_FILTER_CONFIG_ACCEPT_ALL();
-
-  esp_err_t err = twai_driver_install(&g_config, &t_config, &f_config);
-  if (err != ESP_OK) {
-    ESP_LOGE(TAG, "Failed to install TWAI driver: %d", err);
-    vSemaphoreDelete(h->mutex);
-    free(h);
-    return ZDT_ERR_CAN_TX_FAILED;
-  }
-
-  err = twai_start();
-  if (err != ESP_OK) {
-    ESP_LOGE(TAG, "Failed to start TWAI: %d", err);
-    twai_driver_uninstall();
-    vSemaphoreDelete(h->mutex);
-    free(h);
-    return ZDT_ERR_CAN_TX_FAILED;
-  }
-
-  h->initialized = true;
   *handle = h;
 
   ESP_LOGI(TAG, "ZDT CAN initialized (TX:%d, RX:%d, %lu bps)", config->tx_gpio,
@@ -566,13 +564,8 @@ void zdt_can_deinit(zdt_handle_t handle) {
   if (!handle)
     return;
 
-  if (handle->initialized) {
-    twai_stop();
-    twai_driver_uninstall();
-  }
-
-  if (handle->mutex) {
-    vSemaphoreDelete(handle->mutex);
+  if (handle->driver) {
+    zdt_driver_deinit(handle->driver, handle->driver_context);
   }
 
   free(handle);
@@ -585,83 +578,53 @@ zdt_error_t zdt_can_send_cmd(zdt_handle_t handle, uint8_t addr,
     return ZDT_ERR_INVALID_PARAM;
   }
 
-  if (!handle->initialized) {
+  if (!handle->driver) {
     return ZDT_ERR_NOT_INITIALIZED;
   }
-
-  xSemaphoreTake(handle->mutex, portMAX_DELAY);
 
   // 转换为CAN消息
   zdt_can_msg_t can_msgs[8];
   int num_msgs = zdt_cmd_to_can_msgs(addr, cmd, can_msgs, 8);
   if (num_msgs < 0) {
-    xSemaphoreGive(handle->mutex);
     return (zdt_error_t)num_msgs;
   }
 
   // 发送所有CAN帧
   for (int i = 0; i < num_msgs; i++) {
-    twai_message_t tx_msg = {
-        .extd = 1, // 扩展帧
-        .identifier = can_msgs[i].id,
-        .data_length_code = can_msgs[i].data_len,
+    zdt_can_driver_msg_t driver_msg = {
+        .id = can_msgs[i].id,
+        .is_extended = can_msgs[i].is_extended,
+        .data_len = can_msgs[i].data_len,
     };
-    memcpy(tx_msg.data, can_msgs[i].data, can_msgs[i].data_len);
+    memcpy(driver_msg.data, can_msgs[i].data, can_msgs[i].data_len);
 
-    // 打印CAN命令内容，16进制格式，中间以空格分隔
-    char hexstr[3 * 8 + 1] = {0}; // 最多8字节数据，每字节两字符+空格
-    int offset = 0;
-    for (int ii = 0; ii < tx_msg.data_length_code; ++ii) {
-      offset += snprintf(hexstr + offset, sizeof(hexstr) - offset, "%02X ",
-                         tx_msg.data[ii]);
-    }
-    ESP_LOGI(TAG, "CAN Tx: id=0x%08X, data(%d): %s", tx_msg.identifier,
-             tx_msg.data_length_code, hexstr);
-
-    esp_err_t err =
-        twai_transmit(&tx_msg, pdMS_TO_TICKS(handle->config.tx_timeout_ms));
-    if (err != ESP_OK) {
-      ESP_LOGE(TAG, "CAN TX failed: %s", esp_err_to_name(err));
-      xSemaphoreGive(handle->mutex);
-      return ZDT_ERR_CAN_TX_FAILED;
+    int ret = zdt_driver_send(handle->driver, handle->driver_context, &driver_msg);
+    if (ret != 0) {
+      ESP_LOGE(TAG, "CAN TX failed");
+      return (zdt_error_t)ret;
     }
   }
 
   // 如果需要响应，接收
   if (response) {
-    twai_message_t rx_msg;
-    esp_err_t err =
-        twai_receive(&rx_msg, pdMS_TO_TICKS(handle->config.rx_timeout_ms));
-    if (err != ESP_OK) {
-      ESP_LOGE(TAG, "CAN RX timeout: %s", esp_err_to_name(err));
-      xSemaphoreGive(handle->mutex);
-      return ZDT_ERR_CAN_RX_TIMEOUT;
+    zdt_can_driver_msg_t driver_msg;
+    int ret = zdt_driver_receive(handle->driver, handle->driver_context, &driver_msg);
+    if (ret != 0) {
+      ESP_LOGE(TAG, "CAN RX failed");
+      return (zdt_error_t)ret;
     }
 
     // 转换为响应结构
     zdt_can_msg_t rx_can = {
-        .id = rx_msg.identifier,
-        .is_extended = rx_msg.extd,
-        .data_len = rx_msg.data_length_code,
+        .id = driver_msg.id,
+        .is_extended = driver_msg.is_extended,
+        .data_len = driver_msg.data_len,
     };
-    memcpy(rx_can.data, rx_msg.data, rx_msg.data_length_code);
-
-    // 打印CAN接收数据内容，16进制格式，中间以空格分隔
-    {
-      char hexstr[3 * 8 + 1] = {0}; // 最多8字节数据，每字节两字符+空格
-      int offset = 0;
-      for (int ii = 0; ii < rx_can.data_len; ++ii) {
-        offset += snprintf(hexstr + offset, sizeof(hexstr) - offset, "%02X ",
-                           rx_can.data[ii]);
-      }
-      ESP_LOGI(TAG, "CAN Rx: id=0x%08X, data(%d): %s", rx_can.id,
-               rx_can.data_len, hexstr);
-    }
+    memcpy(rx_can.data, driver_msg.data, driver_msg.data_len);
 
     zdt_can_msgs_to_response(&rx_can, 1, response);
   }
 
-  xSemaphoreGive(handle->mutex);
   return ZDT_OK;
 }
 
@@ -746,6 +709,19 @@ zdt_error_t zdt_read_pulses(zdt_handle_t handle, uint8_t addr,
     return err;
 
   return zdt_parse_pulses_response(&response, pulses);
+}
+
+zdt_error_t zdt_set_timed_return(zdt_handle_t handle, uint8_t addr,
+                                 uint8_t info_func_code,
+                                 uint16_t interval_ms) {
+  zdt_cmd_buffer_t cmd;
+  zdt_response_t response;
+
+  int len = zdt_build_timed_return(addr, info_func_code, interval_ms, &cmd);
+  if (len < 0)
+    return (zdt_error_t)len;
+
+  return zdt_can_send_cmd(handle, addr, &cmd, &response);
 }
 
 zdt_error_t zdt_set_speed(zdt_handle_t handle, uint8_t addr,

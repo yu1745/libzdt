@@ -1,10 +1,10 @@
 /**
  * @file libzdt.h
  * @brief ZDT X42S 电机驱动库 - CAN协议实现
- * 
+ *
  * 本库实现了 ZDT EMM 固件的 CAN 通讯协议，校验码固定为 0x6B。
  * 适用于 ZDT X42S/Y42 系列闭环步进电机。
- * 
+ *
  * @note 这是一个 ESP-IDF 组件库
  */
 
@@ -13,6 +13,11 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
+
+#ifdef CONFIG_IDF_TARGET
+/* CAN驱动抽象接口，用于高级API */
+#include "zdt_can_driver.h"
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -52,6 +57,7 @@ typedef enum {
 
 /** 读取参数命令功能码 */
 typedef enum {
+    ZDT_CMD_TIMED_RETURN        = 0x11, ///< 定时返回信息命令（X42S/Y42，见5.5.1）
     ZDT_CMD_READ_POSITION       = 0x36, ///< 读取位置角度
     ZDT_CMD_READ_PULSES         = 0x37, ///< 读取脉冲数
     ZDT_CMD_READ_IO_STATUS      = 0x39, ///< 读取IO状态
@@ -75,6 +81,7 @@ typedef enum {
 #define ZDT_AUX_FACTORY_RESET   0x5F    ///< 恢复出厂辅助码
 #define ZDT_AUX_ENABLE          0xAB    ///< 使能控制辅助码
 #define ZDT_AUX_EMERGENCY_STOP  0x98    ///< 急停辅助码
+#define ZDT_AUX_TIMED_RETURN    0x18    ///< 定时返回信息辅助码（5.5.1）
 
 /* ============================================================================
  * 返回状态码
@@ -260,6 +267,21 @@ int zdt_build_read_status_flags(uint8_t addr, zdt_cmd_buffer_t *buf);
  */
 int zdt_build_read_config(uint8_t addr, zdt_cmd_buffer_t *buf);
 
+/**
+ * @brief 构建定时返回信息命令（5.5.1，X42S/Y42）
+ *
+ * 使电机按指定周期定时返回“读取系统参数”中某命令的数据，无需主机频繁轮询。
+ * 定时时间为 0 时停止该信息类型的定时返回。
+ *
+ * @param addr 电机地址
+ * @param info_func_code 要定时返回的读取命令功能码（如 0x36=位置、0x3A=状态标志等，见5.5节）
+ * @param interval_ms 定时周期（毫秒），0 表示停止定时返回
+ * @param buf 输出缓冲区
+ * @return 命令长度(7)，失败返回负数错误码
+ */
+int zdt_build_timed_return(uint8_t addr, uint8_t info_func_code,
+                           uint16_t interval_ms, zdt_cmd_buffer_t *buf);
+
 /* ============================================================================
  * EMM固件运动控制命令构建
  * ========================================================================== */
@@ -384,7 +406,7 @@ bool zdt_response_is_ok(const zdt_response_t *response);
 const char* zdt_response_status_str(uint8_t status);
 
 /* ============================================================================
- * 高级封装API (需要ESP-IDF TWAI驱动)
+ * 高级封装API (需要CAN驱动实现)
  * ========================================================================== */
 
 #ifdef CONFIG_IDF_TARGET
@@ -392,10 +414,16 @@ const char* zdt_response_status_str(uint8_t status);
 /**
  * @brief 初始化ZDT CAN通讯
  * @param config CAN配置
+ * @param driver CAN驱动实现（用户需要提供）
  * @param handle 输出句柄
  * @return ZDT_OK成功
+ *
+ * @note 用户需要提供CAN驱动实现，可以是TWAI或其他自定义驱动
+ * @see zdt_can_driver.h
  */
-zdt_error_t zdt_can_init(const zdt_can_config_t *config, zdt_handle_t *handle);
+zdt_error_t zdt_can_init(const zdt_can_config_t *config,
+                         const zdt_can_driver_t *driver,
+                         zdt_handle_t *handle);
 
 /**
  * @brief 反初始化ZDT CAN通讯
@@ -467,6 +495,14 @@ zdt_error_t zdt_read_position(zdt_handle_t handle, uint8_t addr, zdt_position_t 
 zdt_error_t zdt_read_pulses(zdt_handle_t handle, uint8_t addr, int32_t *pulses);
 
 /**
+ * @brief 设置/取消定时返回信息（5.5.1，X42S/Y42）
+ * @param info_func_code 要定时返回的读取命令功能码（如 ZDT_CMD_READ_POSITION、ZDT_CMD_READ_STATUS_FLAGS）
+ * @param interval_ms 周期毫秒，0 表示停止定时返回
+ */
+zdt_error_t zdt_set_timed_return(zdt_handle_t handle, uint8_t addr,
+                                 uint8_t info_func_code, uint16_t interval_ms);
+
+/**
  * @brief 设置速度模式 (EMM固件)
  * @param speed_rpm 速度 (0-3000 RPM)
  * @param acc 加速度档位 (0-255)
@@ -487,34 +523,6 @@ zdt_error_t zdt_set_position(zdt_handle_t handle, uint8_t addr,
                              zdt_motion_mode_t mode, bool sync_cache);
 
 #endif /* CONFIG_IDF_TARGET */
-
-/* ============================================================================
- * 工具函数
- * ========================================================================== */
-
-/**
- * @brief 角度转换：度 -> 0.1度单位
- */
-static inline int32_t zdt_deg_to_01deg(float deg) {
-    return (int32_t)(deg * 10.0f);
-}
-
-/**
- * @brief 角度转换：0.1度单位 -> 度
- */
-static inline float zdt_01deg_to_deg(int32_t raw) {
-    return (float)raw / 10.0f;
-}
-
-/**
- * @brief 打印命令缓冲区（用于调试）
- */
-void zdt_print_cmd_buffer(const zdt_cmd_buffer_t *buf);
-
-/**
- * @brief 打印CAN消息（用于调试）
- */
-void zdt_print_can_msg(const zdt_can_msg_t *msg);
 
 #ifdef __cplusplus
 }

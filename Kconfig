@@ -1,0 +1,25 @@
+# ZDT CAN 驱动配置
+
+choice ZDT_CAN_DRIVER_IMPL
+    prompt "CAN Driver Implementation"
+    default ZDT_CAN_DRIVER_NONE
+    help
+        选择要使用的 CAN 驱动实现。如果不选择驱动，需要在使用时提供自定义驱动。
+
+    config ZDT_CAN_DRIVER_NONE
+        bool "None (Custom driver required)"
+        help
+            不使用内置驱动。用户需要在调用 zdt_can_init() 时提供自己的驱动实现。
+
+    config ZDT_CAN_DRIVER_TWAI
+        bool "ESP-IDF TWAI Driver"
+        select DRIVER_TWAI
+        help
+            使用 ESP-IDF 内置的 TWAI 驱动。适用于 ESP32/ESP32-S2/ESP32-S3 等芯片。
+endchoice
+
+config ZDT_ENABLE_TWAI_DRIVER
+    bool
+    default y if ZDT_CAN_DRIVER_TWAI
+    help
+        用于条件编译 TWAI 驱动实现的内部选项。
