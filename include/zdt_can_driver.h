@@ -41,11 +41,18 @@ typedef struct {
 } zdt_can_driver_config_t;
 
 /**
- * @brief CAN驱动接口（不透明指针）
+ * @brief CAN驱动接口（虚函数表）
  *
- * 驱动结构体定义在源文件中，头文件只做前向声明
+ * 驱动结构体定义在头文件中，供 inline 访问函数使用
  * 通过工厂函数获取驱动实例
  */
+struct zdt_can_driver_s {
+    int (*init)(const zdt_can_driver_config_t *config, void **context);
+    void (*deinit)(void *context);
+    int (*send)(void *context, const zdt_can_driver_msg_t *msg);
+    int (*receive)(void *context, zdt_can_driver_msg_t *msg);
+};
+
 typedef struct zdt_can_driver_s zdt_can_driver_t;
 
 /* ============================================================================
@@ -106,22 +113,21 @@ static inline int zdt_driver_receive(const zdt_can_driver_t *driver,
  * ========================================================================== */
 
 /**
- * @def ZDT_CAN_DRIVER_IMPL
- * @brief 定义要使用的CAN驱动实现
+ * @def ZDT_CAN_USE_TWAI
+ * @brief 定义此宏时启用并编译 ESP-IDF TWAI 驱动实现
  *
- * 可选值:
- * - ZDT_CAN_DRIVER_TWAI: ESP-IDF TWAI驱动 (需要ESP-IDF环境)
- * - 自定义: 用户在应用层实现
+ * 在 ESP-IDF 中通过 Kconfig 选择 "ESP-IDF TWAI Driver" 时会自动定义。
+ * 非 ESP-IDF 构建时可手动 #define ZDT_CAN_USE_TWAI 以使用 TWAI 驱动。
  *
- * @note 如果不定义任何驱动，需要在应用层提供驱动实现
+ * @note 未定义任何内置驱动时，需在应用层提供自定义驱动实现。
  */
-// #define ZDT_CAN_DRIVER_IMPL  ZDT_CAN_DRIVER_TWAI
+// #define ZDT_CAN_USE_TWAI
 
 /* ============================================================================
  * ESP-IDF TWAI驱动实现
  * ========================================================================== */
 
-#if defined(ZDT_CAN_DRIVER_IMPL) && ZDT_CAN_DRIVER_IMPL == ZDT_CAN_DRIVER_TWAI
+#ifdef ZDT_CAN_USE_TWAI
 
 /**
  * @brief 获取ESP-IDF TWAI驱动实现
@@ -129,7 +135,7 @@ static inline int zdt_driver_receive(const zdt_can_driver_t *driver,
  */
 const zdt_can_driver_t* zdt_get_twai_driver(void);
 
-#endif /* ZDT_CAN_DRIVER_IMPL == ZDT_CAN_DRIVER_TWAI */
+#endif /* ZDT_CAN_USE_TWAI */
 
 #ifdef __cplusplus
 }

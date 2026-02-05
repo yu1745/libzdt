@@ -2,10 +2,10 @@
  * @file zdt_can_twai.c
  * @brief ESP-IDF TWAI驱动实现
  *
- * 仅在定义了 ZDT_CAN_DRIVER_IMPL 且值为 ZDT_CAN_DRIVER_TWAI 时编译
+ * 仅在定义了 ZDT_CAN_USE_TWAI 时编译
  */
 
-#if defined(ZDT_CAN_DRIVER_IMPL) && ZDT_CAN_DRIVER_IMPL == ZDT_CAN_DRIVER_TWAI
+#ifdef ZDT_CAN_USE_TWAI
 
 #include "zdt_can_driver.h"
 #include "esp_err.h"
@@ -17,14 +17,6 @@
 #include <string.h>
 
 static const char *TAG = "zdt_twai";
-
-/** 驱动虚函数表结构 */
-struct zdt_can_driver_s {
-    int (*init)(const zdt_can_driver_config_t *config, void **context);
-    void (*deinit)(void *context);
-    int (*send)(void *context, const zdt_can_driver_msg_t *msg);
-    int (*receive)(void *context, zdt_can_driver_msg_t *msg);
-};
 
 /** TWAI驱动上下文 */
 typedef struct {
@@ -214,4 +206,4 @@ const zdt_can_driver_t* zdt_get_twai_driver(void) {
     return &twai_driver;
 }
 
-#endif /* ZDT_CAN_DRIVER_IMPL == ZDT_CAN_DRIVER_TWAI */
+#endif /* ZDT_CAN_USE_TWAI */

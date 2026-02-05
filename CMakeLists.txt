@@ -6,9 +6,7 @@ set(LIBZDT_CORE_SRCS
 
 # 设置驱动实现类型
 if(CONFIG_ZDT_ENABLE_TWAI_DRIVER)
-    target_compile_definitions(${COMPONENT_LIB} PRIVATE
-        ZDT_CAN_DRIVER_IMPL=ZDT_CAN_DRIVER_TWAI
-    )
+    target_compile_definitions(${COMPONENT_LIB} PRIVATE ZDT_CAN_USE_TWAI)
 endif()
 
 idf_component_register(

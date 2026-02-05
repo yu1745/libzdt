@@ -44,7 +44,7 @@ ESP-IDF 组件库，用于驱动 ZDT X42S/Y42 系列闭环步进电机（EMM 固
 
 1. **不透明指针 (Opaque Pointer)**：驱动结构体定义在源文件中，头文件只做前向声明
 2. **依赖注入**：`zdt_can_init()` 通过参数注入驱动实例
-3. **编译时控制**：通过宏 `ZDT_CAN_DRIVER_IMPL` 控制是否编译内置驱动
+3. **编译时控制**：通过宏 `ZDT_CAN_USE_TWAI` 控制是否编译 TWAI 内置驱动
 4. **零拷贝**：协议层与驱动层共享消息缓冲区
 
 ## 快速开始
@@ -74,13 +74,13 @@ my_project/
 
 ```cmake
 # 定义使用 TWAI 驱动
-target_compile_definitions(${COMPONENT_LIB} PRIVATE ZDT_CAN_DRIVER_IMPL=ZDT_CAN_DRIVER_TWAI)
+target_compile_definitions(${COMPONENT_LIB} PRIVATE ZDT_CAN_USE_TWAI)
 ```
 
 或在代码中定义：
 
 ```c
-#define ZDT_CAN_DRIVER_IMPL ZDT_CAN_DRIVER_TWAI
+#define ZDT_CAN_USE_TWAI
 #include "libzdt.h"
 ```
 
