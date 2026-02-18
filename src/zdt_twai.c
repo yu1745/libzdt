@@ -9,9 +9,11 @@
 #if CONFIG_ZDT_ENABLE_TWAI_DRIVER
 
 #include "driver/twai.h"
+#include "esp_err.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
+#include "freertos/semphr.h"
 #include "freertos/task.h"
 #include <string.h>
 
@@ -30,6 +32,9 @@
  * 全局变量
  *============================================================================*/
 
+#define TWAI_RECOVERY_TASK_STACK_SIZE (4096)
+#define TWAI_RECOVERY_TASK_PRIORITY (10)
+
 static struct {
   twai_mode_t mode;
   uint32_t tx_gpio;
@@ -43,6 +48,10 @@ static struct {
   uint32_t rx_count;
   uint32_t tx_count;
   uint32_t error_count;
+  int last_error;
+  zdt_twai_config_t saved_config;
+  bool config_saved;
+  SemaphoreHandle_t recovery_mutex;
 } twai_ctx = {.mode = TWAI_MODE_NORMAL,
               .tx_gpio = GPIO_NUM_NC,
               .rx_gpio = GPIO_NUM_NC,
@@ -54,13 +63,18 @@ static struct {
               .rx_task_handle = NULL,
               .rx_count = 0,
               .tx_count = 0,
-              .error_count = 0};
+              .error_count = 0,
+              .last_error = 0,
+              .saved_config = {0},
+              .config_saved = false,
+              .recovery_mutex = NULL};
 
 /*==============================================================================
  * 内部函数声明
  *============================================================================*/
 
 static void twai_rx_task(void *arg);
+static void twai_recovery_task(void *arg);
 static esp_err_t twai_convert_to_esp_msg(const zdt_can_msg_t *zdt_msg,
                                          twai_message_t *esp_msg);
 static esp_err_t twai_convert_from_esp_msg(const twai_message_t *esp_msg,
@@ -81,10 +95,12 @@ int zdt_twai_init(const zdt_twai_config_t *config) {
     return -1;
   }
 
-  /* 保存配置 */
+  /* 保存配置（用于恢复） */
   twai_ctx.tx_gpio = config->tx_gpio;
   twai_ctx.rx_gpio = config->rx_gpio;
   twai_ctx.bitrate = config->bitrate;
+  twai_ctx.saved_config = *config;
+  twai_ctx.config_saved = true;
 
   /* 配置TWAI时序 */
   twai_timing_config_t t_config;
@@ -215,6 +231,7 @@ int zdt_twai_send(const zdt_can_msg_t *msg, uint32_t timeout_ms) {
   /* 发送消息 */
   ret = twai_transmit(&esp_msg, pdMS_TO_TICKS(timeout_ms));
   if (ret != ESP_OK) {
+    twai_ctx.last_error = (int)ret;
     ESP_LOGE(TAG, "Failed to transmit message: %s", esp_err_to_name(ret));
     twai_ctx.error_count++;
     return -1;
@@ -224,8 +241,7 @@ int zdt_twai_send(const zdt_can_msg_t *msg, uint32_t timeout_ms) {
   return 0;
 }
 
-int zdt_twai_send_multi(const zdt_can_msg_t *msgs, uint8_t num,
-                        uint32_t interval_us, uint32_t timeout_ms) {
+int zdt_twai_send_multi(const zdt_can_msg_t *msgs, uint8_t num,uint32_t timeout_ms) {
   if (!twai_ctx.is_running) {
     ESP_LOGE(TAG, "TWAI driver not running");
     return -1;
@@ -244,15 +260,6 @@ int zdt_twai_send_multi(const zdt_can_msg_t *msgs, uint8_t num,
     } else {
       ESP_LOGE(TAG, "Failed to send message %d/%d", i + 1, num);
       break;
-    }
-
-    /* 如果不是最后一个消息，添加延时 */
-    if (i < num - 1 && interval_us > 0) {
-      if (interval_us >= 1000) {
-        vTaskDelay(pdMS_TO_TICKS(interval_us / 1000));
-      } else {
-        esp_rom_delay_us(interval_us);
-      }
     }
   }
 
@@ -345,9 +352,180 @@ void zdt_twai_clear_stats(void) {
   twai_ctx.error_count = 0;
 }
 
+int zdt_twai_get_last_error(void) { return twai_ctx.last_error; }
+
+int zdt_twai_recover_from_invalid_state(void) {
+  if (!twai_ctx.config_saved) {
+    ESP_LOGE(TAG, "Recovery failed: no saved config");
+    return -1;
+  }
+  /* 防止并发恢复 */
+  if (twai_ctx.recovery_mutex == NULL) {
+    twai_ctx.recovery_mutex = xSemaphoreCreateMutex();
+  }
+  if (twai_ctx.recovery_mutex != NULL &&
+      xSemaphoreTake(twai_ctx.recovery_mutex, pdMS_TO_TICKS(5000)) != pdTRUE) {
+    ESP_LOGW(TAG, "Recovery already in progress, skip");
+    return -1;
+  }
+
+  zdt_twai_rx_callback_t saved_cb = twai_ctx.rx_callback;
+  void *saved_arg = twai_ctx.rx_callback_arg;
+
+  /* 1. 杀死接收任务 */
+  if (twai_ctx.rx_task_handle != NULL) {
+    vTaskDelete(twai_ctx.rx_task_handle);
+    twai_ctx.rx_task_handle = NULL;
+  }
+  twai_ctx.rx_callback = NULL;
+  twai_ctx.rx_callback_arg = NULL;
+
+  vTaskDelay(pdMS_TO_TICKS(50));
+
+  /* 2. 停止并反初始化 TWAI
+   * 当驱动处于 BUS_OFF 等异常状态时，twai_stop() 会返回 ESP_ERR_INVALID_STATE，
+   * 但 twai_driver_uninstall() 在 BUS_OFF 状态下可成功，故 stop 失败时直接尝试 uninstall */
+  if (twai_ctx.is_running) {
+    if (zdt_twai_stop() != 0) {
+      ESP_LOGW(TAG, "Recovery: twai_stop failed (e.g. BUS_OFF), trying direct uninstall");
+      twai_ctx.is_running = false;
+    }
+  }
+  /* 删除我们的 tx_queue，然后卸载 ESP-IDF 驱动 */
+  if (twai_ctx.tx_queue != NULL) {
+    vQueueDelete(twai_ctx.tx_queue);
+    twai_ctx.tx_queue = NULL;
+  }
+  esp_err_t uninstall_ret = twai_driver_uninstall();
+  if (uninstall_ret != ESP_OK) {
+    ESP_LOGE(TAG, "Recovery: twai_driver_uninstall failed: %s",
+             esp_err_to_name(uninstall_ret));
+    goto recovery_fail;
+  }
+
+  /* 3. 重新初始化并启动 */
+  if (zdt_twai_init(&twai_ctx.saved_config) != 0) {
+    ESP_LOGE(TAG, "Recovery: zdt_twai_init failed");
+    goto recovery_fail;
+  }
+  if (zdt_twai_start() != 0) {
+    ESP_LOGE(TAG, "Recovery: zdt_twai_start failed");
+    zdt_twai_deinit();
+    goto recovery_fail;
+  }
+
+  /* 4. 重新注册回调（重建接收任务） */
+  if (saved_cb != NULL && zdt_twai_register_callback(saved_cb, saved_arg) != 0) {
+    ESP_LOGE(TAG, "Recovery: zdt_twai_register_callback failed");
+    goto recovery_fail;
+  }
+
+  twai_ctx.last_error = 0;
+  ESP_LOGI(TAG, "TWAI recovery completed successfully");
+  if (twai_ctx.recovery_mutex != NULL) {
+    xSemaphoreGive(twai_ctx.recovery_mutex);
+  }
+  return 0;
+
+recovery_fail:
+  if (twai_ctx.recovery_mutex != NULL) {
+    xSemaphoreGive(twai_ctx.recovery_mutex);
+  }
+  return -1;
+}
+
 /*==============================================================================
  * 内部函数实现
  *============================================================================*/
+
+/**
+ * @brief TWAI 恢复任务（从 RX 任务内触发）
+ */
+static void twai_recovery_task(void *arg) {
+  struct {
+    zdt_twai_rx_callback_t cb;
+    void *arg;
+  } *params = (typeof(params))arg;
+  zdt_twai_rx_callback_t saved_cb = params ? params->cb : NULL;
+  void *saved_arg = params ? params->arg : NULL;
+  if (params != NULL) {
+    vPortFree(params);
+  }
+
+  vTaskDelay(pdMS_TO_TICKS(100));
+
+  /* 防止与 executor 触发的恢复并发 */
+  if (twai_ctx.recovery_mutex == NULL) {
+    twai_ctx.recovery_mutex = xSemaphoreCreateMutex();
+  }
+  if (twai_ctx.recovery_mutex != NULL &&
+      xSemaphoreTake(twai_ctx.recovery_mutex, pdMS_TO_TICKS(5000)) != pdTRUE) {
+    ESP_LOGW(TAG, "Recovery task: another recovery in progress, exit");
+    vTaskDelete(NULL);
+    return;
+  }
+
+  /* 此时 rx_task 已退出，rx_task_handle 已为 NULL */
+  twai_ctx.rx_callback = NULL;
+  twai_ctx.rx_callback_arg = NULL;
+
+  if (!twai_ctx.config_saved) {
+    ESP_LOGE(TAG, "Recovery task: no saved config");
+    if (twai_ctx.recovery_mutex != NULL) {
+      xSemaphoreGive(twai_ctx.recovery_mutex);
+    }
+    vTaskDelete(NULL);
+    return;
+  }
+
+  /* 停止 TWAI；若 stop 失败（如 BUS_OFF），直接尝试 uninstall */
+  if (twai_ctx.is_running) {
+    if (zdt_twai_stop() != 0) {
+      ESP_LOGW(TAG, "Recovery task: twai_stop failed, trying direct uninstall");
+      twai_ctx.is_running = false;
+    }
+  }
+  if (twai_ctx.tx_queue != NULL) {
+    vQueueDelete(twai_ctx.tx_queue);
+    twai_ctx.tx_queue = NULL;
+  }
+  esp_err_t uninstall_ret = twai_driver_uninstall();
+  if (uninstall_ret != ESP_OK) {
+    ESP_LOGE(TAG, "Recovery task: twai_driver_uninstall failed: %s",
+             esp_err_to_name(uninstall_ret));
+    goto rec_task_fail;
+  }
+
+  /* 重新初始化并启动 */
+  if (zdt_twai_init(&twai_ctx.saved_config) != 0) {
+    ESP_LOGE(TAG, "Recovery task: zdt_twai_init failed");
+    goto rec_task_fail;
+  }
+  if (zdt_twai_start() != 0) {
+    ESP_LOGE(TAG, "Recovery task: zdt_twai_start failed");
+    zdt_twai_deinit();
+    goto rec_task_fail;
+  }
+
+  /* 重新注册回调 */
+  if (saved_cb != NULL) {
+    zdt_twai_register_callback(saved_cb, saved_arg);
+  }
+
+  twai_ctx.last_error = 0;
+  ESP_LOGI(TAG, "TWAI recovery task completed successfully");
+  if (twai_ctx.recovery_mutex != NULL) {
+    xSemaphoreGive(twai_ctx.recovery_mutex);
+  }
+  vTaskDelete(NULL);
+  return;
+
+rec_task_fail:
+  if (twai_ctx.recovery_mutex != NULL) {
+    xSemaphoreGive(twai_ctx.recovery_mutex);
+  }
+  vTaskDelete(NULL);
+}
 
 /**
  * @brief TWAI接收任务
@@ -373,7 +551,33 @@ static void twai_rx_task(void *arg) {
       }
     } else if (ret == ESP_ERR_TIMEOUT) {
       /* 超时是正常的，继续循环 */
+    } else if (ret == ESP_ERR_INVALID_STATE) {
+      twai_ctx.last_error = (int)ret;
+      twai_ctx.error_count++;
+      ESP_LOGE(TAG, "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+      ESP_LOGE(TAG, "!!! TWAI ESP_ERR_INVALID_STATE - KILLING RX TASK  !!!");
+      ESP_LOGE(TAG, "!!! AND RESTARTING TWAI DRIVER - RECOVERY...     !!!");
+      ESP_LOGE(TAG, "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+      /* 保存回调信息，创建恢复任务后退出 */
+      zdt_twai_rx_callback_t saved_cb = twai_ctx.rx_callback;
+      void *saved_arg = twai_ctx.rx_callback_arg;
+      twai_ctx.rx_callback = NULL;
+      twai_ctx.rx_callback_arg = NULL;
+      twai_ctx.rx_task_handle = NULL;
+      /* 创建恢复任务（恢复任务会 stop/deinit/init/start/register） */
+      struct {
+        zdt_twai_rx_callback_t cb;
+        void *arg;
+      } *params = pvPortMalloc(sizeof(*params));
+      if (params != NULL) {
+        params->cb = saved_cb;
+        params->arg = saved_arg;
+        xTaskCreate(twai_recovery_task, "twai_rec", TWAI_RECOVERY_TASK_STACK_SIZE,
+                    params, TWAI_RECOVERY_TASK_PRIORITY, NULL);
+      }
+      vTaskDelete(NULL);
     } else {
+      twai_ctx.last_error = (int)ret;
       ESP_LOGE(TAG, "RX task error: %s", esp_err_to_name(ret));
       twai_ctx.error_count++;
       vTaskDelay(pdMS_TO_TICKS(TWAI_RX_TASK_DELAY_MS));

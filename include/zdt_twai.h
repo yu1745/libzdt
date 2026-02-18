@@ -44,7 +44,7 @@ typedef struct {
 #define ZDT_TWAI_DEFAULT_CONFIG()                                              \
   {.tx_gpio = 7,                                                               \
    .rx_gpio = 6,                                                               \
-   .bitrate = 500 * 1000,                                                      \
+   .bitrate = 1000 * 1000,                                                      \
    .rx_queue_len = 20,                                                         \
    .enable_tx_queue = true,                                                    \
    .tx_queue_len = 10}
@@ -107,7 +107,7 @@ int zdt_twai_send(const zdt_can_msg_t *msg, uint32_t timeout_ms);
  * @return 实际发送的消息数量，负数=错误码
  */
 int zdt_twai_send_multi(const zdt_can_msg_t *msgs, uint8_t num,
-                        uint32_t interval_us, uint32_t timeout_ms);
+                        uint32_t timeout_ms);
 
 /**
  * @brief 接收CAN消息（阻塞）
@@ -163,6 +163,19 @@ uint32_t zdt_twai_get_error_count(void);
  * @brief 清除统计计数
  */
 void zdt_twai_clear_stats(void);
+
+/**
+ * @brief 获取最后一次 TWAI 操作的错误码
+ * @return esp_err_t 错误码，ESP_OK 表示无错误
+ */
+int zdt_twai_get_last_error(void);
+
+/**
+ * @brief 从 ESP_ERR_INVALID_STATE 恢复：杀死接收任务，重启 TWAI 驱动
+ * 调用前需确保已通过 zdt_twai_register_callback 注册过回调
+ * @return 0=成功, 负数=错误码
+ */
+int zdt_twai_recover_from_invalid_state(void);
 
 #endif /* CONFIG_ZDT_ENABLE_TWAI_DRIVER */
 

@@ -1244,7 +1244,7 @@ bool zdt_parse_bus_current(const zdt_can_msg_t *msg, uint16_t *current)
  */
 bool zdt_parse_encoder_linearized(const zdt_can_msg_t *msg, uint16_t *value)
 {
-    if (msg == NULL || value == NULL || msg->dlc < 5) {
+    if (msg == NULL || value == NULL || msg->dlc < 4) {
         return false;
     }
 
