@@ -1,0 +1,7 @@
+version: "0.1.0"
+description: >-
+  C99 库，构建 ZDT_X42S 第二代闭环步进电机（及 Y42/Emm 固件变体）的
+  主机命令字节帧。82 条命令覆盖手册 5.2-5.8，所有字节输出逐字节对齐
+  手册示例，82/82 单元测试通过。只构建不收发，校验码固定 0x6B。
+  纯 C99 无依赖，任意 ESP-IDF target / 主机均可构建。
+url: https://github.com/yu1745/libzdt
