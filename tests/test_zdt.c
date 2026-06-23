@@ -420,10 +420,11 @@ int main(void)
     check("5.6.20 读位置窗口", buf, n,
           (const uint8_t[]){0x01, 0x41, 0x6B}, 3);
 
-    /* 5.6.21 修改位置到达窗口 — 手册示例: 01 D1 07 01 00 08 6B (0.8°) */
+    /* 5.6.21 修改位置到达窗口 — 真机验证: 01 D1 07 01 08 6B (0.8°)
+     * Value 是单字节(02~30)，不是 BE16。手册原例 00 08 有误，真机返回 EE。 */
     n = zdtBuildWritePosWindowCmd(0x01, ZDT_STORE_YES, 8, buf, sizeof buf);
     check("5.6.21 改位置窗口=0.8°", buf, n,
-          (const uint8_t[]){0x01, 0xD1, 0x07, 0x01, 0x00, 0x08, 0x6B}, 7);
+          (const uint8_t[]){0x01, 0xD1, 0x07, 0x01, 0x08, 0x6B}, 6);
 
     /* 5.6.22 读取过热过流阈值 — 表格: Addr+13+6B */
     n = zdtBuildReadProtectThresholdCmd(0x01, buf, sizeof buf);

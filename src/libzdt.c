@@ -1134,8 +1134,10 @@ int zdtBuildReadPosWindowCmd(uint8_t addr, uint8_t *buf, size_t buf_size)
     return (int)i;
 }
 
-/* 5.6.21 修改位置到达窗口 (X42S/Y42)  Addr + D1 + 07 + store + window(BE16, ×0.1°) + 6B  — 6B
- * 例: 01 D1 07 01 00 08 6B (修改为 0.8°) */
+/* 5.6.21 修改位置到达窗口 (X42S/Y42)  Addr + D1 + 07 + store + window(单字节, ×0.1°) + 6B  — 6B
+ * 例: 01 D1 07 01 08 6B (修改为 0.8°)
+ * 真机验证：Value 是单字节(02~30, 对应 0.2°~3.0°)，不是 BE16。
+ * 旧实现误用 u16_be 导致多一个 0x00 字节，电机返回 EE(格式错误)。 */
 int zdtBuildWritePosWindowCmd(uint8_t addr, uint8_t store,
                               uint16_t window_x10,
                               uint8_t *buf, size_t buf_size)
@@ -1147,7 +1149,7 @@ int zdtBuildWritePosWindowCmd(uint8_t addr, uint8_t store,
     zdt_append_u8(buf, &i, 0xD1);   /* FuncCode */
     zdt_append_u8(buf, &i, 0x07);   /* AuxCode */
     zdt_append_u8(buf, &i, store);
-    zdt_append_u16_be(buf, &i, window_x10);
+    zdt_append_u8(buf, &i, (uint8_t)window_x10);   /* 单字节，范围 02~30 */
     zdt_append_u8(buf, &i, ZDT_CHECKSUM_DEFAULT);
     return (int)i;
 }

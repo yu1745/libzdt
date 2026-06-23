@@ -383,7 +383,7 @@ int zdtBuildWriteDmx512Cmd(uint8_t addr, uint8_t store,
 int zdtBuildReadPosWindowCmd(uint8_t addr, uint8_t *buf, size_t buf_size);
 
 /* 5.6.21 修改位置到达窗口 (X42S/Y42)
- * Addr + D1 + 07 + 是否存储 + 窗口值(BE16, ×0.1°) + 6B — 6B */
+ * Addr + D1 + 07 + 是否存储 + 窗口值(单字节, ×0.1°, 范围 02~30) + 6B — 6B */
 int zdtBuildWritePosWindowCmd(uint8_t addr, uint8_t store,
                               uint16_t window_x10,
                               uint8_t *buf, size_t buf_size);
