@@ -351,8 +351,34 @@ int zdtBuildTrapezoidPosModeCurrentLimitCmd(uint8_t addr, uint8_t dir,
 }
 
 /* 5.3.12 位置模式控制 (Emm) — 功能码 FD
- * 命令: Addr + FD + 方向 + 速度(LE16) + 加速度 + 脉冲数(LE32) + 运动模式 + 同步 + 6B  — 13B
- * 例: 发送 01 FD 01 05 DC 00 00 00 7D 00 00 00 6B → CCW 1500RPM 32000脉冲 */
+ * 命令: Addr + FD + 方向 + 速度(BE16) + 加速度 + 编码器值(BE32) + 运动模式 + 同步 + 6B  — 13B
+ *
+ * 【单位说明 — EMM 固件 vs X 固件】
+ *   X 固件下本字段叫"脉冲数",单位是细分后的步进脉冲(默认细分 16,1 圈 = 51200 脉冲)。
+ *   EMM 固件下本字段是"编码器值",单位 0..65535 = 0..360°,1 圈 = 65536 编码器值。
+ *   命名"pulses"是历史遗留,X 固件用,EMM 固件下应该理解成 encoder_count。
+ *
+ * 【倍率:编码器单位位移 = pulses / microstep】
+ *   EMM 固件内部把 pulses 字段除以当前细分(microstep,5.6.2)后换算成编码器单位位移。
+ *   - microstep=1:1 脉冲 = 1 编码器单位 (1:1)
+ *   - microstep=16:1 脉冲 = 1/16 编码器单位 (16 脉冲 = 1 编码器单位)
+ *   - microstep=0 表示 256 细分:1 脉冲 = 1/256 编码器单位
+ *   推论:microstep=1 下 1 圈 = 65536 脉冲;microstep=16 下 1 圈 = 1048576 脉冲。
+ *
+ * 实测验证(microstep=1):pulses=100 → 实际位移 ≈ 128 编码器单位;
+ *                       pulses=65536 → 实际位移 ≈ 65536 编码器单位 = 1 圈。
+ *
+ * 方向:     ZDT_DIR_CW(0x00) 顺时针 / ZDT_DIR_CCW(0x01) 逆时针
+ * 速度:     RPM(BE16, 闭环建议 0..500)
+ * 加速度:   0..255(0=最高加速,255=最柔和;常用 0~10)
+ * pulses:   编码器值(LE32,正整数)
+ * 运动模式: ZDT_MOVE_REL_LAST(0x00) 相对上次目标 / ZDT_MOVE_ABS_ZERO(0x01) 相对绝对零位
+ *           / ZDT_MOVE_REL_NOW(0x02) 相对当前位置
+ * 同步:     ZDT_SYNC_NOW(0x00) 立即执行 / ZDT_SYNC_CACHE(0x01) 缓存待 SyncMotion 触发
+ *
+ * 例: 发送 01 FD 01 05 DC 0A 00 00 C8 00 02 00 6B → CCW 1500RPM 加速度 10
+ *     编码器值 200, 相对当前位置, 立即执行
+ *     (注:旧例"32000脉冲"是 X 固件举例,EMM 固件下此值是编码器单位,1 圈 = 65536) */
 int zdtBuildPosModeEmmCmd(uint8_t addr, uint8_t dir, uint16_t rpm,
                           uint8_t acc, uint32_t pulses,
                           uint8_t move_mode, uint8_t sync,
@@ -593,14 +619,30 @@ int zdtBuildReadPhaseCurrentCmd(uint8_t addr, uint8_t *buf, size_t buf_size)
     return (int)i;
 }
 
-/* 5.5.7 读取经过线性化校准后的编码器值  Addr + 29 + 6B  — 4B */
+/* 5.5.7 读取经过线性化校准后的编码器值 — 功能码 0x31
+ * 命令: Addr + 31 + 6B  — 4B
+ *
+ * 返回格式(实测 6B):
+ *   [sign] [encoder_value(BE16)] [6B]   —— 共 4B 有效负载
+ *   - sign:       0x00 正转 / 0x01 反转
+ *   - encoder_value: 16-bit 编码器位置(0..65535 = 0..360°,经过线性化校准)
+ *                   即"单圈内绝对编码器值",电机转 N 圈后值仍落在 0..65535 范围内
+ *
+ * 用途:
+ *   - 编码器零点标定后的位置读取,精度比 5.5.13(0x36 实时位置)更高
+ *   - 单圈绝对位置读取,适合周期性回读用于位置闭环控制
+ *
+ * 区别于 5.5.13(0x36 实时位置):5.5.7 是"线性化校准后"的单圈绝对值;
+ *                          5.5.13 是"实时反馈位置",可能是累计或 mod 65535 的位置。
+ *
+ * 注意:旧注释"Addr + 29 + 6B"是错的(0x29 是别的命令),功能码应为 0x31。 */
 int zdtBuildReadEncoderCalibratedCmd(uint8_t addr, uint8_t *buf, size_t buf_size)
 {
     const size_t need = 4;
     size_t i = 0;
     if (zdt_check_size(need, buf_size) < 0) return ZDT_ERR_BUF_TOO_SMALL;
     zdt_append_u8(buf, &i, addr);
-    zdt_append_u8(buf, &i, 0x31);   /* 功能码 5.5.7 线性化编码器值 */
+    zdt_append_u8(buf, &i, 0x31);   /* 功能码 0x31 = 5.5.7 线性化编码器值 */
     zdt_append_u8(buf, &i, ZDT_CHECKSUM_DEFAULT);
     return (int)i;
 }
@@ -665,14 +707,34 @@ int zdtBuildReadDriverTempCmd(uint8_t addr, uint8_t *buf, size_t buf_size)
     return (int)i;
 }
 
-/* 5.5.13 读取电机实时位置  Addr + 40 + 6B  — 4B */
+/* 5.5.13 读取电机实时位置 — 功能码 0x36
+ * 命令: Addr + 36 + 6B  — 4B
+ *
+ * 返回格式(实测):
+ *   [sign] [realtime_pos(BE32)] [6B]   —— 共 6B 有效负载
+ *   - sign:        0x00 正向位置 / 0x01 反向位置
+ *   - realtime_pos: 32-bit 实时位置(单位由固件决定)
+ *                   - EMM 固件下可能是"累计编码器原始值"或"单圈 mod 65535 的位置",
+ *                     取决于具体固件版本
+ *                   - 实测(microstep=1):发 pulses=51200 后读到的 pos_final - pos0 ≈ 1.6e7,
+ *                     说明该字段是"累计编码器原始值"而非单圈 mod 值
+ *                   - 周期回读用 5.5.7(0x31 单圈绝对值)更直观
+ *
+ * 用途:
+ *   - 位置闭环控制时的反馈
+ *   - 估算实际电机位移(注意:发 pulses=51200 期望 0.78 圈,实测位移可能差 12.5 倍,
+ *     因为 EMM 固件内部 pulses÷microstep 后才是编码器位移;详细见 5.3.12 注释)
+ *
+ * 区别于 5.5.7(0x31 编码器值):5.5.7 是单圈绝对值(0..65535),5.5.13 是 32-bit 累计/反馈位置。
+ *
+ * 注意:旧注释"Addr + 40 + 6B"是错的(0x28 = 40 是别的命令),功能码应为 0x36。 */
 int zdtBuildReadRealtimePosCmd(uint8_t addr, uint8_t *buf, size_t buf_size)
 {
     const size_t need = 4;
     size_t i = 0;
     if (zdt_check_size(need, buf_size) < 0) return ZDT_ERR_BUF_TOO_SMALL;
     zdt_append_u8(buf, &i, addr);
-    zdt_append_u8(buf, &i, 0x36);   /* 功能码 5.5.13 实时位置 */
+    zdt_append_u8(buf, &i, 0x36);   /* 功能码 0x36 = 5.5.13 实时位置 */
     zdt_append_u8(buf, &i, ZDT_CHECKSUM_DEFAULT);
     return (int)i;
 }
