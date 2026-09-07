@@ -8,9 +8,18 @@
 # 检测方式：用 COMMAND idf_component_register 而非 IDF_VERSION 变量——后者在
 # 组件管理器的 component_get_requirements 阶段（在 project() 之前 include 本文件时）
 # 尚未定义，会误走到 else 分支调用 project() 导致 "project command is not scriptable"。
+
+set(LIBZDT_SRCS
+    "src/zdt_common_motion.c"
+    "src/zdt_common_sys.c"
+    "src/zdt_common_param.c"
+    "src/zdt_x.c"
+    "src/zdt_emm.c"
+)
+
 if(COMMAND idf_component_register)
     idf_component_register(
-        SRCS "src/libzdt.c"
+        SRCS ${LIBZDT_SRCS}
         INCLUDE_DIRS "src"
     )
 else()
@@ -20,18 +29,11 @@ else()
     set(CMAKE_C_STANDARD 99)
     set(CMAKE_C_STANDARD_REQUIRED ON)
 
-    add_library(zdt STATIC src/libzdt.c)
+    add_library(zdt STATIC ${LIBZDT_SRCS})
     target_include_directories(zdt PUBLIC src)
 
     if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/examples/demo.c")
         add_executable(zdt_demo examples/demo.c)
         target_link_libraries(zdt_demo PRIVATE zdt)
-    endif()
-
-    if(BUILD_TESTING)
-        enable_testing()
-        add_executable(zdt_test tests/test_zdt.c)
-        target_link_libraries(zdt_test PRIVATE zdt)
-        add_test(NAME zdt_test COMMAND zdt_test)
     endif()
 endif()

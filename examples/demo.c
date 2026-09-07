@@ -1,41 +1,45 @@
-/* demo.c - libzdt 使用示例 */
-#include "../src/libzdt.h"
+/* demo.c - libzdt 原生 CAN 接口使用示例 */
+#include "libzdt.h"
 #include <stdio.h>
 
-static void dump(const char *tag, const uint8_t *buf, int len)
+static void dump_can_msg(const char *tag, const zdt_can_msg_t *msg)
 {
-    printf("%s [%dB]:", tag, len);
-    for (int i = 0; i < len; ++i) printf(" %02X", buf[i]);
-    printf("\n");
+    printf("%s: %d CAN frame(s)\n", tag, msg->frame_count);
+    for (int i = 0; i < msg->frame_count; ++i) {
+        const zdt_can_frame_t *f = &msg->frames[i];
+        printf("  [frame %d] ID=0x%04X, DLC=%d, Data:", i, (unsigned int)f->id, f->dlc);
+        for (int j = 0; j < f->dlc; ++j) {
+            printf(" %02X", f->data[j]);
+        }
+        printf("\n");
+    }
 }
 
 int main(void)
 {
-    uint8_t buf[64];
+    zdt_can_msg_t msg;
 
     /* 5.2.1 触发编码器校准 */
-    int n = zdtBuildEncoderCalibrationCmd(0x01, buf, sizeof buf);
-    dump("5.2.1", buf, n);  /* 期望: 01 06 45 6B */
+    zdtCanBuildEncoderCalibrationCmd(0x01, &msg);
+    dump_can_msg("5.2.1 编码器校准", &msg);
 
     /* 5.3.3 力矩模式 (X) — CCW, 斜率 1000mA/S, 电流 1500mA */
-    n = zdtBuildTorqueModeCmd(0x01, ZDT_DIR_CCW, 1000, 1500, ZDT_SYNC_NOW,
-                              buf, sizeof buf);
-    dump("5.3.3", buf, n);
+    zdtCanBuildTorqueModeCmd(0x01, ZDT_DIR_CCW, 1000, 1500, ZDT_SYNC_NOW, &msg);
+    dump_can_msg("5.3.3 力矩模式(X)", &msg);
 
     /* 5.3.13 立即停止 */
-    n = zdtBuildImmediateStopCmd(0x01, ZDT_SYNC_NOW, buf, sizeof buf);
-    dump("5.3.13", buf, n);
+    zdtCanBuildImmediateStopCmd(0x01, ZDT_SYNC_NOW, &msg);
+    dump_can_msg("5.3.13 立即停止", &msg);
 
-    /* 5.4.6 修改回零参数 */
-    n = zdtBuildWriteHomingParamsCmd(0x01, ZDT_STORE_YES, 0x00,
-                                     ZDT_DIR_CW, 30, 10000,
-                                     300, 800, 60, 0x00,
-                                     buf, sizeof buf);
-    dump("5.4.6", buf, n);
+    /* 5.4.6 修改回零参数 (多包长命令) */
+    zdtCanBuildWriteHomingParamsCmd(0x01, ZDT_STORE_YES, 0x00,
+                                    ZDT_DIR_CW, 30, 10000,
+                                    300, 800, 60, 0x00, &msg);
+    dump_can_msg("5.4.6 修改回零参数", &msg);
 
     /* 5.6.1 修改电机 ID — 存储并把地址改为 0x02 */
-    n = zdtBuildChangeAddrCmd(0x01, ZDT_STORE_YES, 0x02, buf, sizeof buf);
-    dump("5.6.1", buf, n);
+    zdtCanBuildChangeAddrCmd(0x01, ZDT_STORE_YES, 0x02, &msg);
+    dump_can_msg("5.6.1 修改电机 ID", &msg);
 
     return 0;
 }
