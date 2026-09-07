@@ -6,7 +6,8 @@
 
 /* CAN 分帧说明：各模块文档中的“原始命令”包含 Addr；CAN 将 Addr 编入
  * EID=(Addr<<8)|Packet（Packet 从 0 开始）。CAN data 从 Code 开始、不含
- * Addr，且每个 data payload 最多 8 字节。 */
+ * Addr。每个 data payload 从 Code 开始；长命令每包均重复 Code，后接至多
+ * 7 个连续命令字节。 */
 
 #ifdef __cplusplus
 extern "C" {
