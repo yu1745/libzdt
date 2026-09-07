@@ -372,7 +372,7 @@ int zdtCanBuildWritePidXCmd(uint8_t addr, uint8_t store,
  * ==================================================================== */
 
 /* 5.7.1 存储一组速度参数，上电自动运行 (X)
- * Addr + F7 + 1C + store + dir + acc(BE16) + speed(BE16) + en + 6B — 10B */
+ * Addr + F7 + 1C + store + dir + acc(BE16) + speed(BE16) + en + 6B — 11B */
 static int _raw_StoreAutoRunXCmd(uint8_t addr, uint8_t store,
                                 uint8_t dir, uint16_t acc_rpm_per_s,
                                 uint16_t speed_rpm_x10, uint8_t en_pin_enable,

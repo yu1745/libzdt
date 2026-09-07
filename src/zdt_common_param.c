@@ -370,18 +370,18 @@ int zdtCanBuildReadPosWindowCmd(uint8_t addr, zdt_can_msg_t *msg)
     return zdt_pack_can_msg(addr, raw, (size_t)len, msg);
 }
 
-/* 5.6.21 修改位置到达窗口 (X42S/Y42)  Addr + D1 + 07 + store + window(单字节, ×0.1°) + 6B  — 6B */
+/* 5.6.21 修改位置到达窗口 (X42S/Y42)  Addr + D1 + 07 + store + window(BE16, ×0.1°) + 6B  — 7B */
 static int _raw_write_pos_window(uint8_t addr, uint8_t store, uint16_t window_x10,
                                 uint8_t *buf, size_t max_len)
 {
-    const size_t need = 6;
+    const size_t need = 7;
     size_t i = 0;
     if (zdt_check_size(0, need, max_len) != ZDT_OK) return ZDT_ERR_BUF_TOO_SMALL;
     zdt_append_u8(buf, &i, max_len, addr);
     zdt_append_u8(buf, &i, max_len, 0xD1);
     zdt_append_u8(buf, &i, max_len, 0x07);
     zdt_append_u8(buf, &i, max_len, store);
-    zdt_append_u8(buf, &i, max_len, (uint8_t)window_x10);
+    zdt_append_u16_be(buf, &i, max_len, window_x10);
     zdt_append_u8(buf, &i, max_len, ZDT_CHECKSUM_DEFAULT);
     return (int)i;
 }
@@ -562,11 +562,11 @@ int zdtCanBuildReadBumpReturnAngleCmd(uint8_t addr, zdt_can_msg_t *msg)
     return zdt_pack_can_msg(addr, raw, (size_t)len, msg);
 }
 
-/* 5.6.29 修改碰撞回零返回角度 (X42S/Y42)  Addr + 5C + AC + store + angle(BE16, ×0.1°) + 6B  — 6B */
+/* 5.6.29 修改碰撞回零返回角度 (X42S/Y42)  Addr + 5C + AC + store + angle(BE16, ×0.1°) + 6B  — 7B */
 static int _raw_write_bump_return_angle(uint8_t addr, uint8_t store, uint16_t angle_x10,
                                        uint8_t *buf, size_t max_len)
 {
-    const size_t need = 6;
+    const size_t need = 7;
     size_t i = 0;
     if (zdt_check_size(0, need, max_len) != ZDT_OK) return ZDT_ERR_BUF_TOO_SMALL;
     zdt_append_u8(buf, &i, max_len, addr);

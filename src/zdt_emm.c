@@ -41,7 +41,7 @@ int zdtCanBuildSpeedModeEmmCmd(uint8_t addr, uint8_t dir, uint16_t rpm,
 }
 
 /* 5.3.12 位置模式控制 (Emm)
- * Addr + FD + 方向 + 速度(BE16) + 加速度(1B) + 脉冲数(BE32) + 运动模式 + 同步 + 6B — 13B */
+ * Addr + FD + 方向 + 速度(BE16) + 加速度(1B；0=不使用曲线加减速) + 脉冲数(BE32) + 运动模式 + 同步 + 6B — 13B */
 static int _raw_PosModeEmmCmd(uint8_t addr, uint8_t dir, uint16_t rpm,
                              uint8_t acc, uint32_t pulses,
                              uint8_t move_mode, uint8_t sync,
@@ -250,7 +250,7 @@ static int _raw_WriteAllConfigEmmCmd(uint8_t addr, uint8_t store,
                                      uint8_t microstep, uint8_t interp,
                                      uint16_t open_current_ma,
                                      uint16_t stall_current_ma,
-                                     uint16_t max_voltage_mv,
+                                     uint16_t max_voltage_code,
                                      uint8_t uart_baud, uint8_t can_speed,
                                      uint8_t check_mode, uint8_t reply_mode,
                                      uint8_t stall_protect,
@@ -277,7 +277,7 @@ static int _raw_WriteAllConfigEmmCmd(uint8_t addr, uint8_t store,
     zdt_append_u8(buf, &i, buf_size, 0x00);
     zdt_append_u16_be(buf, &i, buf_size, open_current_ma);
     zdt_append_u16_be(buf, &i, buf_size, stall_current_ma);
-    zdt_append_u16_be(buf, &i, buf_size, max_voltage_mv);
+    zdt_append_u16_be(buf, &i, buf_size, max_voltage_code);
     zdt_append_u8(buf, &i, buf_size, uart_baud);
     zdt_append_u8(buf, &i, buf_size, can_speed);
     zdt_append_u8(buf, &i, buf_size, 0x00);
@@ -299,7 +299,7 @@ int zdtCanBuildWriteAllConfigEmmCmd(uint8_t addr, uint8_t store,
                                     uint8_t microstep, uint8_t interp,
                                     uint16_t open_current_ma,
                                     uint16_t stall_current_ma,
-                                    uint16_t max_voltage_mv,
+                                    uint16_t max_voltage_code,
                                     uint8_t uart_baud, uint8_t can_speed,
                                     uint8_t check_mode, uint8_t reply_mode,
                                     uint8_t stall_protect,
@@ -312,7 +312,7 @@ int zdtCanBuildWriteAllConfigEmmCmd(uint8_t addr, uint8_t store,
     uint8_t raw[33];
     int n = _raw_WriteAllConfigEmmCmd(addr, store, motor_type, pul_mode, com_mode,
                                       en_level, dir_level, microstep, interp,
-                                      open_current_ma, stall_current_ma, max_voltage_mv,
+                                      open_current_ma, stall_current_ma, max_voltage_code,
                                       uart_baud, can_speed, check_mode, reply_mode,
                                       stall_protect, stall_speed_rpm, stall_current_ma2,
                                       stall_time_ms, pos_window, raw, sizeof(raw));

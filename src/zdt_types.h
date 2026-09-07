@@ -4,6 +4,10 @@
 #include <stdint.h>
 #include <stddef.h>
 
+/* CAN 分帧说明：各模块文档中的“原始命令”包含 Addr；CAN 将 Addr 编入
+ * EID=(Addr<<8)|Packet（Packet 从 0 开始）。CAN data 从 Code 开始、不含
+ * Addr，且每个 data payload 最多 8 字节。 */
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -36,7 +40,7 @@ extern "C" {
 /* CAN 帧结构体 */
 typedef struct {
     uint32_t id;         /* 扩展帧 ID: (addr << 8) | packet */
-    uint8_t  dlc;        /* 数据长度 (1..8) */
+    uint8_t  dlc;        /* 数据长度 (2..8) */
     uint8_t  data[8];    /* 有效负载 */
 } zdt_can_frame_t;
 

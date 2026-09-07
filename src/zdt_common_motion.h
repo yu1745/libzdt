@@ -1,6 +1,10 @@
 /*
  * zdt_common_motion.h - 通用动作与运动控制模块 (CAN 扩展帧构建)
  *
+ * CAN 分帧说明：下列“原始命令”包含 Addr，供与手册逐字节对照；CAN 将
+ * Addr 编入 EID=(Addr<<8)|Packet（Packet 从 0 开始）。CAN data 从 Code
+ * 开始、不含 Addr，且每个 data payload 最多 8 字节。
+ *
  * 包含双固件通用命令 (共 15 条):
  *   5.2 触发动作 (5条):
  *     5.2.1 zdtCanBuildEncoderCalibrationCmd
@@ -161,7 +165,7 @@ int zdtCanBuildSetSingleTurnZeroCmd(uint8_t addr, uint8_t store,
  * 原始命令: Addr + 9A + homing_mode + sync + 6B (5 字节 -> 1 帧 CAN)
  *
  * @param addr        电机地址 (0x01..0xFF, 0x00 为广播)
- * @param homing_mode 回零模式 (0x00:单圈就近, 0x01:单圈方向, 0x02:无限位碰撞, 0x03:有限位碰撞, 0x04:限位回到零点, 0x05:单圈绝对零位)
+ * @param homing_mode 回零模式 (0x00:单圈就近, 0x01:单圈方向, 0x02:无限位碰撞, 0x03:限位回零, 0x04:回到绝对位置坐标零点, 0x05:回到上次掉电位置角度)
  * @param sync        同步标志: ZDT_SYNC_NOW(0x00) / ZDT_SYNC_CACHE(0x01)
  * @param msg         输出 CAN 报文集合指针
  * @return 成功返回生成的 CAN 帧数 (>=1)，失败返回负数错误码

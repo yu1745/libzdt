@@ -3,6 +3,9 @@
  *
  * 纯 C99，无任何硬件平台或操作系统依赖，零动态内存分配。
  * 本模块包含 15 条 X 固件特有命令的 CAN 报文构建函数。
+ * CAN 分帧说明：下列“原始命令”包含 Addr，供与手册逐字节对照；CAN 将
+ * Addr 编入 EID=(Addr<<8)|Packet（Packet 从 0 开始）。CAN data 从 Code
+ * 开始、不含 Addr，且每个 data payload 最多 8 字节。
  */
 
 #ifndef ZDT_X_H
@@ -98,7 +101,7 @@ int zdtCanBuildSpeedModeXCurrentLimitCmd(uint8_t addr, uint8_t dir,
  * @param addr       电机地址 (1..255, 0 为广播)
  * @param dir        方向: ZDT_DIR_CW(0x00) 或 ZDT_DIR_CCW(0x01)
  * @param rpm_x10    速度: 0..30000 (单位 0.1RPM)
- * @param pos_angle  位置角度 (单位 0.1°，或缩小10倍后的 1°)
+ * @param pos_angle  位置角度（默认单位 0.1°；使能缩小 10 倍输入后单位 0.01°）
  * @param move_mode  相对/绝对运动模式: ZDT_MOVE_REL_LAST / ABS_ZERO / REL_NOW
  * @param sync       多机同步标志: ZDT_SYNC_NOW(0x00) 或 ZDT_SYNC_CACHE(0x01)
  * @param msg        输出 CAN 报文集合指针
@@ -117,7 +120,7 @@ int zdtCanBuildPosModePassThroughCmd(uint8_t addr, uint8_t dir,
  * @param addr           电机地址 (1..255, 0 为广播)
  * @param dir            方向: ZDT_DIR_CW(0x00) 或 ZDT_DIR_CCW(0x01)
  * @param rpm_x10        速度: 0..30000 (单位 0.1RPM)
- * @param pos_angle      位置角度 (单位 0.1°，或缩小10倍后的 1°)
+ * @param pos_angle      位置角度（默认单位 0.1°；使能缩小 10 倍输入后单位 0.01°）
  * @param move_mode      相对/绝对运动模式: ZDT_MOVE_REL_LAST / ABS_ZERO / REL_NOW
  * @param sync           多机同步标志: ZDT_SYNC_NOW(0x00) 或 ZDT_SYNC_CACHE(0x01)
  * @param max_current_ma 最大电流: 0..5000 mA
@@ -140,7 +143,7 @@ int zdtCanBuildPosModePassThroughCurrentLimitCmd(uint8_t addr, uint8_t dir,
  * @param accel_rpm_s   加速加速度: 0..65535 RPM/s
  * @param decel_rpm_s   减速加速度: 0..65535 RPM/s
  * @param max_speed_x10 最大速度: 0..30000 (单位 0.1RPM)
- * @param pos_angle     位置角度 (单位 0.1°，或缩小10倍后的 1°)
+ * @param pos_angle     位置角度（默认单位 0.1°；使能缩小 10 倍输入后单位 0.01°）
  * @param move_mode     相对/绝对运动模式: ZDT_MOVE_REL_LAST / ABS_ZERO / REL_NOW
  * @param sync          多机同步标志: ZDT_SYNC_NOW(0x00) 或 ZDT_SYNC_CACHE(0x01)
  * @param msg           输出 CAN 报文集合指针
@@ -162,7 +165,7 @@ int zdtCanBuildTrapezoidPosModeCmd(uint8_t addr, uint8_t dir,
  * @param accel_rpm_s    加速加速度: 0..65535 RPM/s
  * @param decel_rpm_s    减速加速度: 0..65535 RPM/s
  * @param max_speed      最大速度: 0..30000 (单位 0.1RPM)
- * @param pos_angle      位置角度 (单位 0.1°，或缩小10倍后的 1°)
+ * @param pos_angle      位置角度（默认单位 0.1°；使能缩小 10 倍输入后单位 0.01°）
  * @param move_mode      相对/绝对运动模式: ZDT_MOVE_REL_LAST / ABS_ZERO / REL_NOW
  * @param sync           多机同步标志: ZDT_SYNC_NOW(0x00) 或 ZDT_SYNC_CACHE(0x01)
  * @param max_current_ma 最大电流: 0..5000 mA
@@ -190,7 +193,7 @@ int zdtCanBuildTrapezoidPosModeCurrentLimitCmd(uint8_t addr, uint8_t dir,
  *
  * @param addr       电机地址 (1..255, 0 为广播)
  * @param store      是否存储: ZDT_STORE_NO(0x00) 或 ZDT_STORE_YES(0x01)
- * @param scale_10x  00=不缩小(单位0.1°), 01=缩小10倍(单位1°)
+ * @param scale_10x  00=不缩小（单位 0.1°），01=缩小 10 倍（单位 0.01°）
  * @param msg        输出 CAN 报文集合指针
  * @return 成功返回写入的 CAN 帧数 (>=1)，失败返回负数错误码 (ZDT_ERR_PARAM)
  */
@@ -216,8 +219,8 @@ int zdtCanBuildReadPidXCmd(uint8_t addr, zdt_can_msg_t *msg);
  *
  * @param addr   电机地址 (1..255, 0 为广播)
  * @param store  是否存储: ZDT_STORE_NO(0x00) 或 ZDT_STORE_YES(0x01)
- * @param pTkp   位置环转矩刚度系数
- * @param pBkp   位置环反电动势刚度系数
+ * @param pTkp   梯形曲线位置环 Kp
+ * @param pBkp   直通限速位置环 Kp
  * @param vkp    速度环比例系数
  * @param vki    速度环积分系数
  * @param msg    输出 CAN 报文集合指针
@@ -235,7 +238,7 @@ int zdtCanBuildWritePidXCmd(uint8_t addr, uint8_t store,
 /**
  * @brief 5.7.1 存储一组速度参数，上电自动运行 (X)
  *
- * 原始命令格式: Addr + F7 + 1C + store + dir + acc(BE16) + speed(BE16) + en + 6B (10 字节)
+ * 原始命令格式: Addr + F7 + 1C + store + dir + acc(BE16) + speed(BE16) + en + 6B (11 字节)
  *
  * @param addr           电机地址 (1..255, 0 为广播)
  * @param store          00=清除已存储参数, 01=存储当前速度参数
@@ -300,7 +303,7 @@ int zdtCanBuildReadAllConfigXCmd(uint8_t addr, zdt_can_msg_t *msg);
  * @param can_speed        CAN速率编号: 00..09
  * @param check_mode       通讯校验模式: 00..04
  * @param reply_mode       控制命令应答模式: 00..04
- * @param angle_scale_10   位置角度是否缩小10倍输入: 00=否, 01=是
+ * @param angle_scale_10   位置角度是否缩小 10 倍输入：00=否（0.1°），01=是（0.01°）
  * @param stall_protect    堵转保护: 00=关, 01=使能, 02=复位不松轴
  * @param stall_speed_rpm  堵转检测转速: 0..3000 RPM
  * @param stall_current_ma 堵转检测电流: 0..5000 mA

@@ -1,6 +1,10 @@
 /*
  * zdt_common_sys.h - 通用读取系统参数模块 (CAN 扩展帧构建)
  *
+ * CAN 分帧说明：下列“原始命令”包含 Addr，供与手册逐字节对照；CAN 将
+ * Addr 编入 EID=(Addr<<8)|Packet（Packet 从 0 开始）。CAN data 从 Code
+ * 开始、不含 Addr，且每个 data payload 最多 8 字节。
+ *
  * 对应手册 5.5 读取系统参数 (共 18 条命令):
  *   5.5.1  zdtCanBuildSetPeriodicReportCmd
  *   5.5.2  zdtCanBuildReadVersionCmd
@@ -55,7 +59,7 @@ int zdtCanBuildSetPeriodicReportCmd(uint8_t addr, uint8_t info_func_code,
 
 /**
  * @brief 5.5.2 读取固件版本和硬件版本
- * 原始命令: Addr + 1F + 6B (4 字节 -> 1 帧 CAN)
+ * 原始命令: Addr + 1F + 6B (3 字节 -> 1 帧 CAN)
  *
  * @param addr 电机地址 (0x01..0xFF, 0x00 为广播)
  * @param msg  输出 CAN 报文集合指针
@@ -65,7 +69,7 @@ int zdtCanBuildReadVersionCmd(uint8_t addr, zdt_can_msg_t *msg);
 
 /**
  * @brief 5.5.3 读取相电阻和相电感
- * 原始命令: Addr + 20 + 6B (4 字节 -> 1 帧 CAN)
+ * 原始命令: Addr + 20 + 6B (3 字节 -> 1 帧 CAN)
  *
  * @param addr 电机地址 (0x01..0xFF, 0x00 为广播)
  * @param msg  输出 CAN 报文集合指针
@@ -75,7 +79,7 @@ int zdtCanBuildReadPhaseRLCmd(uint8_t addr, zdt_can_msg_t *msg);
 
 /**
  * @brief 5.5.4 读取总线电压
- * 原始命令: Addr + 24 + 6B (4 字节 -> 1 帧 CAN)
+ * 原始命令: Addr + 24 + 6B (3 字节 -> 1 帧 CAN)
  *
  * @param addr 电机地址 (0x01..0xFF, 0x00 为广播)
  * @param msg  输出 CAN 报文集合指针
@@ -85,7 +89,7 @@ int zdtCanBuildReadBusVoltageCmd(uint8_t addr, zdt_can_msg_t *msg);
 
 /**
  * @brief 5.5.5 读取总线电流 (X42S/Y42)
- * 原始命令: Addr + 26 + 6B (4 字节 -> 1 帧 CAN)
+ * 原始命令: Addr + 26 + 6B (3 字节 -> 1 帧 CAN)
  *
  * @param addr 电机地址 (0x01..0xFF, 0x00 为广播)
  * @param msg  输出 CAN 报文集合指针
@@ -95,7 +99,7 @@ int zdtCanBuildReadBusCurrentCmd(uint8_t addr, zdt_can_msg_t *msg);
 
 /**
  * @brief 5.5.6 读取相电流
- * 原始命令: Addr + 27 + 6B (4 字节 -> 1 帧 CAN)
+ * 原始命令: Addr + 27 + 6B (3 字节 -> 1 帧 CAN)
  *
  * @param addr 电机地址 (0x01..0xFF, 0x00 为广播)
  * @param msg  输出 CAN 报文集合指针
@@ -105,7 +109,7 @@ int zdtCanBuildReadPhaseCurrentCmd(uint8_t addr, zdt_can_msg_t *msg);
 
 /**
  * @brief 5.5.7 读取经过线性化校准后的编码器值
- * 原始命令: Addr + 31 + 6B (4 字节 -> 1 帧 CAN)
+ * 原始命令: Addr + 31 + 6B (3 字节 -> 1 帧 CAN)
  *
  * @param addr 电机地址 (0x01..0xFF, 0x00 为广播)
  * @param msg  输出 CAN 报文集合指针
@@ -115,7 +119,7 @@ int zdtCanBuildReadEncoderCalibratedCmd(uint8_t addr, zdt_can_msg_t *msg);
 
 /**
  * @brief 5.5.8 读取输入脉冲数
- * 原始命令: Addr + 32 + 6B (4 字节 -> 1 帧 CAN)
+ * 原始命令: Addr + 32 + 6B (3 字节 -> 1 帧 CAN)
  *
  * @param addr 电机地址 (0x01..0xFF, 0x00 为广播)
  * @param msg  输出 CAN 报文集合指针
@@ -125,7 +129,7 @@ int zdtCanBuildReadInputPulsesCmd(uint8_t addr, zdt_can_msg_t *msg);
 
 /**
  * @brief 5.5.9 读取电机目标位置
- * 原始命令: Addr + 33 + 6B (4 字节 -> 1 帧 CAN)
+ * 原始命令: Addr + 33 + 6B (3 字节 -> 1 帧 CAN)
  *
  * @param addr 电机地址 (0x01..0xFF, 0x00 为广播)
  * @param msg  输出 CAN 报文集合指针
@@ -135,7 +139,7 @@ int zdtCanBuildReadTargetPosCmd(uint8_t addr, zdt_can_msg_t *msg);
 
 /**
  * @brief 5.5.10 读取电机实时设定的目标位置
- * 原始命令: Addr + 34 + 6B (4 字节 -> 1 帧 CAN)
+ * 原始命令: Addr + 34 + 6B (3 字节 -> 1 帧 CAN)
  *
  * @param addr 电机地址 (0x01..0xFF, 0x00 为广播)
  * @param msg  输出 CAN 报文集合指针
@@ -145,7 +149,7 @@ int zdtCanBuildReadRealtimeTargetPosCmd(uint8_t addr, zdt_can_msg_t *msg);
 
 /**
  * @brief 5.5.11 读取电机实时转速
- * 原始命令: Addr + 35 + 6B (4 字节 -> 1 帧 CAN)
+ * 原始命令: Addr + 35 + 6B (3 字节 -> 1 帧 CAN)
  *
  * @param addr 电机地址 (0x01..0xFF, 0x00 为广播)
  * @param msg  输出 CAN 报文集合指针
@@ -155,7 +159,7 @@ int zdtCanBuildReadRealtimeSpeedCmd(uint8_t addr, zdt_can_msg_t *msg);
 
 /**
  * @brief 5.5.12 读取驱动温度 (X42S/Y42)
- * 原始命令: Addr + 39 + 6B (4 字节 -> 1 帧 CAN)
+ * 原始命令: Addr + 39 + 6B (3 字节 -> 1 帧 CAN)
  *
  * @param addr 电机地址 (0x01..0xFF, 0x00 为广播)
  * @param msg  输出 CAN 报文集合指针
@@ -165,7 +169,7 @@ int zdtCanBuildReadDriverTempCmd(uint8_t addr, zdt_can_msg_t *msg);
 
 /**
  * @brief 5.5.13 读取电机实时位置
- * 原始命令: Addr + 36 + 6B (4 字节 -> 1 帧 CAN)
+ * 原始命令: Addr + 36 + 6B (3 字节 -> 1 帧 CAN)
  *
  * @param addr 电机地址 (0x01..0xFF, 0x00 为广播)
  * @param msg  输出 CAN 报文集合指针
@@ -175,7 +179,7 @@ int zdtCanBuildReadRealtimePosCmd(uint8_t addr, zdt_can_msg_t *msg);
 
 /**
  * @brief 5.5.14 读取电机位置误差
- * 原始命令: Addr + 37 + 6B (4 字节 -> 1 帧 CAN)
+ * 原始命令: Addr + 37 + 6B (3 字节 -> 1 帧 CAN)
  *
  * @param addr 电机地址 (0x01..0xFF, 0x00 为广播)
  * @param msg  输出 CAN 报文集合指针
@@ -185,7 +189,7 @@ int zdtCanBuildReadPosErrorCmd(uint8_t addr, zdt_can_msg_t *msg);
 
 /**
  * @brief 5.5.15 读取电机状态标志
- * 原始命令: Addr + 3A + 6B (4 字节 -> 1 帧 CAN)
+ * 原始命令: Addr + 3A + 6B (3 字节 -> 1 帧 CAN)
  *
  * @param addr 电机地址 (0x01..0xFF, 0x00 为广播)
  * @param msg  输出 CAN 报文集合指针
@@ -195,7 +199,7 @@ int zdtCanBuildReadMotorStatusCmd(uint8_t addr, zdt_can_msg_t *msg);
 
 /**
  * @brief 5.5.16 读取回零状态标志 + 电机状态标志 (X42S/Y42)
- * 原始命令: Addr + 3C + 6B (4 字节 -> 1 帧 CAN)
+ * 原始命令: Addr + 3C + 6B (3 字节 -> 1 帧 CAN)
  *
  * @param addr 电机地址 (0x01..0xFF, 0x00 为广播)
  * @param msg  输出 CAN 报文集合指针
@@ -205,7 +209,7 @@ int zdtCanBuildReadHomingAndStatusCmd(uint8_t addr, zdt_can_msg_t *msg);
 
 /**
  * @brief 5.5.17 读取引脚 IO 电平状态 (X42S/Y42)
- * 原始命令: Addr + 3D + 6B (4 字节 -> 1 帧 CAN)
+ * 原始命令: Addr + 3D + 6B (3 字节 -> 1 帧 CAN)
  *
  * @param addr 电机地址 (0x01..0xFF, 0x00 为广播)
  * @param msg  输出 CAN 报文集合指针
@@ -215,7 +219,7 @@ int zdtCanBuildReadIoLevelCmd(uint8_t addr, zdt_can_msg_t *msg);
 
 /**
  * @brief 5.5.18 读取电池电压 (Y42)
- * 原始命令: Addr + 38 + 6B (4 字节 -> 1 帧 CAN)
+ * 原始命令: Addr + 38 + 6B (3 字节 -> 1 帧 CAN)
  *
  * @param addr 电机地址 (0x01..0xFF, 0x00 为广播)
  * @param msg  输出 CAN 报文集合指针

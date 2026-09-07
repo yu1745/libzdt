@@ -3,6 +3,9 @@
  *
  * 纯 C99，无任何硬件平台或操作系统依赖，零动态内存分配。
  * 本库负责构建符合 ZDT CAN 扩展帧协议的发送报文 (zdt_can_msg_t)。
+ * CAN 分帧说明：各模块文档中的“原始命令”包含 Addr；CAN 将 Addr 编入
+ * EID=(Addr<<8)|Packet（Packet 从 0 开始）。CAN data 从 Code 开始、不含
+ * Addr，且每个 data payload 最多 8 字节。
  */
 
 #ifndef LIBZDT_H

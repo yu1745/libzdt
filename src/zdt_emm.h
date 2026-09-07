@@ -2,6 +2,9 @@
  * zdt_emm.h - ZDT Emm 固件专属原生 CAN 命令构建接口
  *
  * 纯 C99，无任何硬件平台或操作系统依赖，零动态内存分配。
+ * CAN 分帧说明：下列“原始命令”包含 Addr，供与手册逐字节对照；CAN 将
+ * Addr 编入 EID=(Addr<<8)|Packet（Packet 从 0 开始）。CAN data 从 Code
+ * 开始、不含 Addr，且每个 data payload 最多 8 字节。
  * 本模块包含 9 条 Emm 固件特有命令的 CAN 报文构建函数：
  *   - 5.3.7  zdtCanBuildSpeedModeEmmCmd
  *   - 5.3.12 zdtCanBuildPosModeEmmCmd
@@ -30,12 +33,12 @@ extern "C" {
 /**
  * @brief 5.3.7 速度模式控制 (Emm)
  *
- * 原始命令格式: Addr + F6 + 方向 + 速度(BE16, RPM) + 加速度(1B, 档位) + 同步 + 6B (8 字节)
+ * 原始命令格式: Addr + F6 + 方向 + 速度(BE16, 编码值) + 加速度(1B, 档位) + 同步 + 6B (8 字节)
  *
  * @param addr  电机地址 (1..255, 0 为广播)
  * @param dir   方向: ZDT_DIR_CW(0x00) 或 ZDT_DIR_CCW(0x01)
- * @param rpm   速度: 0..3000 (单位 RPM，整数)
- * @param acc   加速度: 0..255 档位 (0 为最高加速度)
+ * @param rpm   速度编码值: 关闭速度缩小 10 倍时单位 RPM；开启时每单位 0.1 RPM
+ * @param acc   加速度：0..255 档位（0=不使用曲线加减速，直接按设定速度运行）
  * @param sync  多机同步标志: ZDT_SYNC_NOW(0x00) 或 ZDT_SYNC_CACHE(0x01)
  * @param msg   输出 CAN 报文集合指针
  * @return 成功返回写入的 CAN 帧数 (>=1)，失败返回负数错误码 (ZDT_ERR_PARAM)
@@ -47,13 +50,13 @@ int zdtCanBuildSpeedModeEmmCmd(uint8_t addr, uint8_t dir, uint16_t rpm,
 /**
  * @brief 5.3.12 位置模式控制 (Emm)
  *
- * 原始命令格式: Addr + FD + 方向 + 速度(BE16, RPM) + 加速度(1B, 档位) + 脉冲数/编码器值(BE32) + 运动模式 + 同步 + 6B (13 字节)
+ * 原始命令格式: Addr + FD + 方向 + 速度(BE16, 编码值) + 加速度(1B, 档位) + 脉冲数(BE32) + 运动模式 + 同步 + 6B (13 字节)
  *
  * @param addr       电机地址 (1..255, 0 为广播)
  * @param dir        方向: ZDT_DIR_CW(0x00) 或 ZDT_DIR_CCW(0x01)
- * @param rpm        速度: 0..3000 (单位 RPM，整数)
- * @param acc        加速度: 0..255 档位
- * @param pulses     脉冲数/编码器计数值 (BE32)
+ * @param rpm        速度编码值: 关闭速度缩小 10 倍时单位 RPM；开启时每单位 0.1 RPM
+ * @param acc        加速度：0..255 档位（0=不使用曲线加减速，直接按设定速度运行）
+ * @param pulses     脉冲数（BE32，不是编码器计数值）
  * @param move_mode  运动模式: ZDT_MOVE_REL_LAST / ABS_ZERO / REL_NOW
  * @param sync       多机同步标志: ZDT_SYNC_NOW(0x00) 或 ZDT_SYNC_CACHE(0x01)
  * @param msg        输出 CAN 报文集合指针
@@ -118,13 +121,13 @@ int zdtCanBuildWritePidEmmCmd(uint8_t addr, uint8_t store,
 /**
  * @brief 5.7.2 存储一组速度参数，上电自动运行 (Emm)
  *
- * 原始命令格式: Addr + F7 + 1C + store + dir + speed(BE16) + acc(1B) + en + 6B (10 字节)
+ * 原始命令格式: Addr + F7 + 1C + store + dir + speed(BE16, 编码值) + acc(1B) + en + 6B (10 字节)
  *
  * @param addr           电机地址 (1..255, 0 为广播)
  * @param store          00=清除已存储参数, 01=存储当前速度参数
  * @param dir            旋转方向: ZDT_DIR_CW(0x00) 或 ZDT_DIR_CCW(0x01)
- * @param speed_rpm      速度: 0..3000 (单位 RPM，BE16)
- * @param acc_level      加速度: 0..255 档位 (单字节)
+ * @param speed_rpm      速度编码值: 关闭速度缩小 10 倍时单位 RPM；开启时每单位 0.1 RPM（BE16）
+ * @param acc_level      加速度：0..255 档位（单字节；0=不使用曲线加减速）
  * @param en_pin_enable  00=不使能En, 01=使能En引脚控制启停
  * @param msg            输出 CAN 报文集合指针
  * @return 成功返回写入的 CAN 帧数 (>=1)，失败返回负数错误码 (ZDT_ERR_PARAM)
@@ -176,16 +179,16 @@ int zdtCanBuildReadAllConfigEmmCmd(uint8_t addr, zdt_can_msg_t *msg);
  * @param interp            细分插补: 00=关闭, 01=开启
  * @param open_current_ma   开环工作电流: 0..5000 mA
  * @param stall_current_ma  闭环堵转最大电流: 0..5000 mA
- * @param max_voltage_mv    闭环最大输出电压: 0..5000 mV
+ * @param max_voltage_code  闭环最大输出电压线码：0..5000，每步 4 mV（实际电压=线码×4 mV）
  * @param uart_baud         串口波特率编号: 00..08
  * @param can_speed         CAN速率编号: 00..09
  * @param check_mode        通讯校验模式: 00..04
  * @param reply_mode        控制命令应答模式: 00..04
- * @param stall_protect     堵转保护: 00=关, 01=使能
+ * @param stall_protect     堵转保护: 00=关闭, 01=使能, 02=堵转后复位为零点且不关闭电机（不松轴）
  * @param stall_speed_rpm   堵转检测转速: 0..3000 RPM
  * @param stall_current_ma2 堵转检测电流: 0..5000 mA
  * @param stall_time_ms     堵转检测时间: 0..65535 ms
- * @param pos_window        位置到达窗口: 0..65535
+ * @param pos_window        位置到达窗口编码值: 0..65535，单位 0.1°（实际窗口=编码值÷10°）
  * @param msg               输出 CAN 报文集合指针
  * @return 成功返回写入的 CAN 帧数 (>=1)，失败返回负数错误码 (ZDT_ERR_PARAM)
  */
@@ -196,7 +199,7 @@ int zdtCanBuildWriteAllConfigEmmCmd(uint8_t addr, uint8_t store,
                                     uint8_t microstep, uint8_t interp,
                                     uint16_t open_current_ma,
                                     uint16_t stall_current_ma,
-                                    uint16_t max_voltage_mv,
+                                    uint16_t max_voltage_code,
                                     uint8_t uart_baud, uint8_t can_speed,
                                     uint8_t check_mode, uint8_t reply_mode,
                                     uint8_t stall_protect,

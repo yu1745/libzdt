@@ -1,6 +1,10 @@
 /*
  * zdt_common_param.h - 通用读写驱动参数模块 (CAN 扩展帧构建)
  *
+ * CAN 分帧说明：下列“原始命令”包含 Addr，供与手册逐字节对照；CAN 将
+ * Addr 编入 EID=(Addr<<8)|Packet（Packet 从 0 开始）。CAN data 从 Code
+ * 开始、不含 Addr，且每个 data payload 最多 8 字节。
+ *
  * 对应手册 5.6 读写驱动参数通用部分 (共 25 条命令):
  *   5.6.1  zdtCanBuildChangeAddrCmd
  *   5.6.2  zdtCanBuildChangeMicrostepCmd
@@ -66,7 +70,7 @@ int zdtCanBuildChangeAddrCmd(uint8_t addr, uint8_t store,
  *
  * @param addr      电机地址 (0x01..0xFF, 0x00 为广播)
  * @param store     是否存储: ZDT_STORE_NO(0x00) / ZDT_STORE_YES(0x01)
- * @param microstep 细分值 (1, 2, 4, 8, 16, 32, 64, 128, 256 等)
+ * @param microstep 细分值的线码：0x00=256 细分；0x01..0xFF=1..255 细分
  * @param msg       输出 CAN 报文集合指针
  * @return 成功返回生成的 CAN 帧数 (>=1)，失败返回负数错误码
  */
@@ -79,7 +83,7 @@ int zdtCanBuildChangeMicrostepCmd(uint8_t addr, uint8_t store,
  * 原始命令: Addr + 50 + flag + 6B (4 字节 -> 1 帧 CAN)
  *
  * @param addr 电机地址 (0x01..0xFF, 0x00 为广播)
- * @param flag 掉电标志: 0x00 掉电释放 / 0x01 上电自动使能
+ * @param flag 掉电指示标志: 可写入 0x00；掉电后重新上电恢复为 0x01，用于检测发生过掉电
  * @param msg  输出 CAN 报文集合指针
  * @return 成功返回生成的 CAN 帧数 (>=1)，失败返回负数错误码
  */
@@ -116,7 +120,7 @@ int zdtCanBuildChangeMotorTypeCmd(uint8_t addr, uint8_t store,
  *
  * @param addr    电机地址 (0x01..0xFF, 0x00 为广播)
  * @param store   是否存储: ZDT_STORE_NO(0x00) / ZDT_STORE_YES(0x01)
- * @param fw_type 固件类型 (0x00: EMM 固件, 0x01: X 固件, 0x02: Y 固件)
+ * @param fw_type 固件类型 (0x00: X 固件, 0x01: Emm 固件, 0x02: Emm 狂暴模式)
  * @param msg     输出 CAN 报文集合指针
  * @return 成功返回生成的 CAN 帧数 (>=1)，失败返回负数错误码
  */
@@ -243,11 +247,11 @@ int zdtCanBuildReadPosWindowCmd(uint8_t addr, zdt_can_msg_t *msg);
 
 /**
  * @brief 5.6.21 修改位置到达窗口 (X42S/Y42)
- * 原始命令: Addr + D1 + 07 + store + window(单字节, ×0.1°) + 6B (6 字节 -> 1 帧 CAN)
+ * 原始命令: Addr + D1 + 07 + store + window(BE16, ×0.1°) + 6B (7 字节 -> 1 帧 CAN)
  *
  * @param addr       电机地址 (0x01..0xFF, 0x00 为广播)
  * @param store      是否存储: ZDT_STORE_NO(0x00) / ZDT_STORE_YES(0x01)
- * @param window_x10 到达窗口阈值 (单字节 0x02~0x1E 代表 0.2°~3.0°)
+ * @param window_x10 到达窗口阈值 (BE16，单位 0.1°；例如 8 代表 0.8°)
  * @param msg        输出 CAN 报文集合指针
  * @return 成功返回生成的 CAN 帧数 (>=1)，失败返回负数错误码
  */
@@ -343,7 +347,7 @@ int zdtCanBuildReadBumpReturnAngleCmd(uint8_t addr, zdt_can_msg_t *msg);
 
 /**
  * @brief 5.6.29 修改碰撞回零返回角度 (X42S/Y42)
- * 原始命令: Addr + 5C + AC + store + angle(BE16) + 6B (6 字节 -> 1 帧 CAN)
+ * 原始命令: Addr + 5C + AC + store + angle(BE16) + 6B (7 字节 -> 1 帧 CAN)
  *
  * @param addr      电机地址 (0x01..0xFF, 0x00 为广播)
  * @param store     是否存储: ZDT_STORE_NO(0x00) / ZDT_STORE_YES(0x01)
