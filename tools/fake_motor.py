@@ -42,6 +42,8 @@ LENGTHS = {
     (0xFF, 0x66): 2,    # 5.3.14 触发同步动作         01 FF 66 6B
     (0x4C, 0xAE): 18,   # 5.4.6 修改回零参数          20 字节
     (0x48, 0xD1): 31,   # 5.8.6 修改驱动配置(Emm)     33 字节
+    (0x84, 0x8A): 4,    # 5.6.2 修改细分值            01 84 8A 00 10 6B
+    (0x11, 0x18): 5,    # 5.5.1 定时返回信息          01 11 18 36 00 32 6B
     (0x24, None): 1,    # 5.5.4 读总线电压            01 24 6B
     (0x36, None): 1,    # 5.5.13 读实时位置           01 36 6B
 }
@@ -56,6 +58,8 @@ class Motor:
         self.pos = 0                    # 脉冲
         self.cached = None              # 同步标志缓存的目标位置
         self.partial = {}               # 来源地址 -> dict(code, body, next, t)
+        self.periodic = None            # 定时返回: (信息功能码, 间隔秒)；None 表示关闭
+        self.periodic_gen = 0           # 每次重设定时返回时递增，旧的定时器据此自行停止
         self.sock = None
         self.lock = threading.Lock()
 
@@ -167,11 +171,42 @@ class Motor:
                 if self.log:
                     print("  response mode -> %d" % reply_mode, flush=True)
                 self.ok(code)
-        elif key == (0x24, None):
+        elif key == (0x84, 0x8A):
+            store, microstep = args[1], args[2]
+            if store > 1:
+                self.status(code, 0xE2)
+            else:
+                self.ok(code)
+        elif key == (0x11, 0x18):
+            info, interval_ms = args[1], (args[2] << 8) | args[3]
+            if (info, None) not in LENGTHS:
+                self.status(code, 0xE2)
+                return
+            self.ok(code)
+            self.periodic_gen += 1
+            self.periodic = (info, interval_ms / 1000.0) if interval_ms else None
+            if self.periodic:
+                self.schedule_periodic(self.periodic_gen)
+        else:
+            self.read(code)
+
+    def read(self, code):
+        """读命令的应答（也用于定时返回）。"""
+        if code == 0x24:
             self.send_reply(code, struct.pack(">H", 24000))     # 24.000 V
-        elif key == (0x36, None):
+        elif code == 0x36:
             counts = abs(self.pos) * COUNTS_PER_REV // PULSES_PER_REV
             self.send_reply(code, bytes([1 if self.pos < 0 else 0]) + struct.pack(">I", counts))
+
+    def schedule_periodic(self, gen):
+        def fire():
+            if gen != self.periodic_gen or not self.periodic:
+                return
+            self.read(self.periodic[0])
+            self.schedule_periodic(gen)
+        t = threading.Timer(self.periodic[1], fire)
+        t.daemon = True
+        t.start()
 
     # ---- 接收 ----
     def on_frame(self, can_id, data):
