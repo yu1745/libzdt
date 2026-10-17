@@ -25,7 +25,7 @@ CHECKSUM = 0x6B
 # 应答模式（手册 5.8.6 的 Response 菜单）
 RESP_NONE, RESP_RECEIVE, RESP_REACHED, RESP_BOTH, RESP_OTHER = range(5)
 
-PULSES_PER_REV = 3200       # 手册 p.56: 3200 脉冲 = 1 圈
+FULL_STEPS_PER_REV = 200    # 1.8° 电机；手册 p.56: 16 细分时 200*16 = 3200 脉冲 = 1 圈
 COUNTS_PER_REV = 65536      # Emm 固件位置: 0-65535 表示 0-360°
 GAP_TIMEOUT_S = 0.2         # 收到首包后等待续包的上限
 
@@ -54,6 +54,7 @@ class Motor:
         self.addr = addr
         self.log = log
         self.response = RESP_RECEIVE    # 手册默认: Receive
+        self.microstep = 16             # 手册默认 16 细分；位置命令的脉冲随细分缩放
         self.target = 0                 # 脉冲
         self.pos = 0                    # 脉冲
         self.cached = None              # 同步标志缓存的目标位置
@@ -176,6 +177,11 @@ class Motor:
             if store > 1:
                 self.status(code, 0xE2)
             else:
+                # 保持物理位置不变，脉冲计数换算到新细分
+                new = microstep or 256
+                self.pos = self.pos * new // self.microstep
+                self.target = self.target * new // self.microstep
+                self.microstep = new
                 self.ok(code)
         elif key == (0x11, 0x18):
             info, interval_ms = args[1], (args[2] << 8) | args[3]
@@ -195,7 +201,7 @@ class Motor:
         if code == 0x24:
             self.send_reply(code, struct.pack(">H", 24000))     # 24.000 V
         elif code == 0x36:
-            counts = abs(self.pos) * COUNTS_PER_REV // PULSES_PER_REV
+            counts = abs(self.pos) * COUNTS_PER_REV // (FULL_STEPS_PER_REV * self.microstep)
             self.send_reply(code, bytes([1 if self.pos < 0 else 0]) + struct.pack(">I", counts))
 
     def schedule_periodic(self, gen):
