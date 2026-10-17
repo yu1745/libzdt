@@ -70,6 +70,9 @@ esp_err_t zdt_twai_del(zdt_twai_handle_t handle);
 
 /**
  * @brief 发送一条命令的全部 CAN 帧
+ * msg 在返回后即可释放：帧会先复制到句柄内的发送缓冲。若上一条消息仍未发完，
+ * 先等待它（同样受 timeout_ms 限制），超时返回 ESP_ERR_TIMEOUT 且不发送。
+ *
  * @param timeout_ms 每帧入队和整条消息发完的等待上限
  */
 esp_err_t zdt_twai_send(zdt_twai_handle_t handle, const zdt_can_msg_t *msg, int timeout_ms);

@@ -23,6 +23,12 @@ struct zdt_twai {
     twai_node_handle_t node;
     QueueHandle_t      rx_queue;
     SemaphoreHandle_t  lock;
+    /* 发送缓冲：驱动只保存 twai_frame_t 及其 buffer 的指针，直到该帧真正发完
+     * （IDF TWAI 文档）。因此帧与数据放在句柄里，并且在上一条消息全部发完之前
+     * 不得覆盖；tx_lock 保护这块缓冲。 */
+    SemaphoreHandle_t  tx_lock;
+    twai_frame_t       tx_frames[ZDT_CAN_MAX_FRAMES];
+    uint8_t            tx_data[ZDT_CAN_MAX_FRAMES][8];
 };
 
 static IRAM_ATTR bool zdt_twai_rx_done_cb(twai_node_handle_t node, const twai_rx_done_event_data_t *edata, void *user_ctx)
@@ -62,7 +68,8 @@ esp_err_t zdt_twai_new(const zdt_twai_config_t *config, zdt_twai_handle_t *handl
     uint32_t rx_depth = config->rx_queue_depth ? config->rx_queue_depth : ZDT_DEFAULT_RX_DEPTH;
     ctx->rx_queue = xQueueCreate(rx_depth, sizeof(zdt_can_frame_t));
     ctx->lock = xSemaphoreCreateMutex();
-    ESP_GOTO_ON_FALSE(ctx->rx_queue && ctx->lock, ESP_ERR_NO_MEM, err, TAG, "no mem");
+    ctx->tx_lock = xSemaphoreCreateMutex();
+    ESP_GOTO_ON_FALSE(ctx->rx_queue && ctx->lock && ctx->tx_lock, ESP_ERR_NO_MEM, err, TAG, "no mem");
 
     twai_onchip_node_config_t node_cfg = {
         .io_cfg = {
@@ -99,6 +106,9 @@ err:
     if (ctx->lock) {
         vSemaphoreDelete(ctx->lock);
     }
+    if (ctx->tx_lock) {
+        vSemaphoreDelete(ctx->tx_lock);
+    }
     free(ctx);
     return ret;
 }
@@ -110,6 +120,7 @@ esp_err_t zdt_twai_del(zdt_twai_handle_t handle)
     twai_node_delete(handle->node);
     vQueueDelete(handle->rx_queue);
     vSemaphoreDelete(handle->lock);
+    vSemaphoreDelete(handle->tx_lock);
     free(handle);
     return ESP_OK;
 }
@@ -119,20 +130,31 @@ esp_err_t zdt_twai_send(zdt_twai_handle_t handle, const zdt_can_msg_t *msg, int 
     ESP_RETURN_ON_FALSE(handle && msg && msg->frame_count >= 1 && msg->frame_count <= ZDT_CAN_MAX_FRAMES,
                         ESP_ERR_INVALID_ARG, TAG, "invalid argument");
 
-    for (uint8_t i = 0; i < msg->frame_count; ++i) {
+    TickType_t ticks = timeout_ms < 0 ? portMAX_DELAY : pdMS_TO_TICKS(timeout_ms);
+    if (xSemaphoreTake(handle->tx_lock, ticks) != pdTRUE) {
+        return ESP_ERR_TIMEOUT;
+    }
+    /* 上一条消息超时返回时可能仍在发送，其帧还引用发送缓冲：发完之前不能覆盖 */
+    esp_err_t ret = twai_node_transmit_wait_all_done(handle->node, timeout_ms);
+    for (uint8_t i = 0; ret == ESP_OK && i < msg->frame_count; ++i) {
         const zdt_can_frame_t *f = &msg->frames[i];
-        twai_frame_t frame = {
+        memcpy(handle->tx_data[i], f->data, f->dlc);
+        handle->tx_frames[i] = (twai_frame_t) {
             .header = {
                 .id = f->id,
                 .dlc = f->dlc,
                 .ide = true,
             },
-            .buffer = (uint8_t *)f->data,
+            .buffer = handle->tx_data[i],
             .buffer_len = f->dlc,
         };
-        ESP_RETURN_ON_ERROR(twai_node_transmit(handle->node, &frame, timeout_ms), TAG, "transmit failed");
+        ret = twai_node_transmit(handle->node, &handle->tx_frames[i], timeout_ms);
     }
-    return twai_node_transmit_wait_all_done(handle->node, timeout_ms);
+    if (ret == ESP_OK) {
+        ret = twai_node_transmit_wait_all_done(handle->node, timeout_ms);
+    }
+    xSemaphoreGive(handle->tx_lock);
+    return ret;
 }
 
 void zdt_twai_flush(zdt_twai_handle_t handle)
