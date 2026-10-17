@@ -16,6 +16,5 @@ files:
   exclude:
     - "*.pdf"
     - "test_apps/**/*"
-    - "tools/**/*"
 dependencies:
   idf: ">=6.1"
