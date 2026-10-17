@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-only */
 /*
  * zdt_common_sys.h - 通用读取系统参数模块 (CAN 扩展帧构建)
  *

@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* 最小用法：使能 1 号电机，转一圈（Emm 固件，3200 脉冲/圈），读回实时位置。 */
 #include <stdio.h>
 

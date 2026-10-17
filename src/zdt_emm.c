@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-only */
 /*
  * zdt_emm.c - ZDT Emm 固件专属原生 CAN 命令构建实现
  *

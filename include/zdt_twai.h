@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-only */
 /*
  * zdt_twai.h - ZDT_X42S 的 ESP-IDF TWAI 收发层
  *

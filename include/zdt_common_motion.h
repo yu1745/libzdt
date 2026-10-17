@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-only */
 /*
  * zdt_common_motion.h - 通用动作与运动控制模块 (CAN 扩展帧构建)
  *

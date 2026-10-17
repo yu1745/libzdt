@@ -4,5 +4,18 @@ description: >-
   构建手册 5.2-5.8 共 82 条主机命令的 CAN 扩展帧，并基于 TWAI 驱动完成
   发送、多包拆装与应答接收。
 url: https://github.com/yu1745/libzdt
+repository: https://github.com/yu1745/libzdt.git
+issues: https://github.com/yu1745/libzdt/issues
+license: GPL-3.0-only
+tags:
+  - motor
+  - stepper
+  - can
+  - twai
+files:
+  exclude:
+    - "*.pdf"
+    - "test_apps/**/*"
+    - "tools/**/*"
 dependencies:
   idf: ">=6.1"

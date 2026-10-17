@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-only */
 /*
  * zdt_common_param.h - 通用读写驱动参数模块 (CAN 扩展帧构建)
  *

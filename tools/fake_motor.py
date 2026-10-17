@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-only
 """ZDT_X42S 假电机（Emm 固件），监听 SocketCAN 接口，用于无硬件的端到端测试。
 
 只依赖标准库。协议规则取自手册 V1.0.3：

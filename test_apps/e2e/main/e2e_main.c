@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* libzdt 端到端测试：固件在 QEMU 里通过 TWAI 与宿主机上的假电机（tools/fake_motor.py）通信。
  *
  * 每个用例打印 "E2E PASS <name>" 或 "E2E FAIL <name>: <原因>"，最后打印

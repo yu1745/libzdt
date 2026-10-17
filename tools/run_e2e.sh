@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: GPL-3.0-only
 # 端到端测试：QEMU(esp32c3) 里的固件经 TWAI 与宿主机上的假电机通信。
 #
 # 前置条件:

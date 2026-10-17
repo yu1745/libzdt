@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-only */
 #ifndef ZDT_TYPES_H
 #define ZDT_TYPES_H
 

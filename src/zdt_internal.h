@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-only */
 #ifndef ZDT_INTERNAL_H
 #define ZDT_INTERNAL_H
 

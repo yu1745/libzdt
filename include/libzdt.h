@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-only */
 /*
  * libzdt.h - ZDT_X42S 第二代闭环步进电机 ESP-IDF 组件 (CAN 扩展帧)
  *
