@@ -1,0 +1,8 @@
+version: "0.2.0"
+description: >-
+  ZDT_X42S 第二代闭环步进电机（含 Y42 / Emm 固件变体）的 ESP-IDF 组件：
+  构建手册 5.2-5.8 共 82 条主机命令的 CAN 扩展帧，并基于 TWAI 驱动完成
+  发送、多包拆装与应答接收。
+url: https://github.com/yu1745/libzdt
+dependencies:
+  idf: ">=6.1"

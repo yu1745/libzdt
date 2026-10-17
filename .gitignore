@@ -1,0 +1,17 @@
+# ESP-IDF 构建产物
+build/
+sdkconfig
+sdkconfig.old
+dependencies.lock
+managed_components/
+qemu_flash.bin
+qemu_efuse.bin
+
+# Python
+__pycache__/
+
+# 编辑器/系统
+.vscode/
+.idea/
+*.swp
+.DS_Store
