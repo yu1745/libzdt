@@ -40,8 +40,10 @@ typedef struct {
     zdt_checksum_t checksum;       /* 与电机设置一致，出厂为 ZDT_CHECKSUM_FIXED_6B */
     zdt_firmware_t firmware;       /* 决定少数读取命令的应答长度 */
     size_t         rx_buffer_size; /* UART 驱动接收缓冲，0 表示 512 */
-    uint32_t       write_gap_us;   /* 修改参数命令应答后到下一次发送的最小间隔，0 表示 5000
-                                      （真机在应答后约 2 ms 内不接收新命令） */
+    uint32_t       write_gap_us;   /* 修改参数命令（不存储）应答后到下一次发送的最小间隔，0 表示 5000
+                                      （真机在应答后约 1-4 ms 内不接收新命令） */
+    uint32_t       store_gap_us;   /* 同上，但命令带存储标志（第 4 字节 01）时用，0 表示 100000
+                                      （真机多为 4-7 ms，擦写 Flash 时约 70 ms） */
 } zdt_uart_config_t;
 
 /**

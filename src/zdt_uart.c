@@ -15,6 +15,7 @@
 #define ZDT_UART_DEFAULT_RXBUF  512
 #define ZDT_UART_TX_MAX         (ZDT_TTL_MAX_FRAME * 4)   /* 多电机命令可串多条子命令 */
 #define ZDT_UART_DEFAULT_WRITE_GAP_US   5000
+#define ZDT_UART_DEFAULT_STORE_GAP_US   100000
 
 static const char *TAG = "zdt_uart";
 
@@ -26,6 +27,8 @@ struct zdt_uart {
     zdt_uart_event_cb_t cb;
     void               *cb_ctx;
     uint32_t            write_gap_us;
+    uint32_t            store_gap_us;
+    bool                last_store;      /* 最近发出的修改参数命令带存储标志 */
     int64_t             hold_until_us;   /* 修改参数命令应答后，此前不发送 */
     size_t              rx_len;
     uint8_t             rx[ZDT_TTL_MAX_FRAME * 2];   /* 已收未解析的字节 */
@@ -50,6 +53,7 @@ esp_err_t zdt_uart_new(const zdt_uart_config_t *config, zdt_uart_handle_t *handl
     h->checksum = config->checksum;
     h->firmware = config->firmware;
     h->write_gap_us = config->write_gap_us ? config->write_gap_us : ZDT_UART_DEFAULT_WRITE_GAP_US;
+    h->store_gap_us = config->store_gap_us ? config->store_gap_us : ZDT_UART_DEFAULT_STORE_GAP_US;
     h->lock = xSemaphoreCreateMutex();
     if (!h->lock) {
         free(h);
@@ -97,7 +101,8 @@ void zdt_uart_set_event_cb(zdt_uart_handle_t handle, zdt_uart_event_cb_t cb, voi
 }
 
 /* 修改参数类命令（5.4.1 / 5.4.6 / 5.6 / 5.7 / 5.8 的写入）。
- * 真机（X42S Emm）在这类命令应答后约 1-2 ms 内不接收下一条命令；读取、运动、停止命令无此现象。 */
+ * 真机（X42S Emm）在这类命令应答后约 1-4 ms 内不接收下一条命令，带存储标志时 4-7 ms，
+ * 擦写 Flash 时约 70 ms；读取、运动、停止命令无此现象。 */
 static bool is_param_write(uint8_t code)
 {
     switch (code) {
@@ -108,6 +113,12 @@ static bool is_param_write(uint8_t code)
     default:
         return false;
     }
+}
+
+/* 存储标志都在第 4 字节（Addr Code 辅助码 store …）；5.6.3 修改掉电标志（50）没有 */
+static bool is_store_write(const uint8_t *frame, size_t len)
+{
+    return len > 4 && is_param_write(frame[1]) && frame[1] != 0x50 && frame[3] == ZDT_STORE_YES;
 }
 
 static void wait_hold(struct zdt_uart *h)
@@ -124,6 +135,7 @@ static esp_err_t send_locked(struct zdt_uart *h, const uint8_t *frame, size_t le
 {
     if (!frame || len < 3 || len > sizeof(h->tx)) return ESP_ERR_INVALID_ARG;
     wait_hold(h);
+    h->last_store = is_store_write(frame, len);
     memcpy(h->tx, frame, len);
     zdt_frame_set_checksum(h->tx, len, h->checksum);
     if (uart_write_bytes(h->port, h->tx, len) != (int)len) return ESP_FAIL;
@@ -189,7 +201,10 @@ static esp_err_t recv_locked(struct zdt_uart *h, uint8_t addr, uint8_t code,
         if (err != ESP_OK) return err;
         bool addr_ok = addr == ZDT_ADDR_BROADCAST || reply->addr == addr;
         if (addr_ok && (reply->code == code || reply->code == 0x00)) {
-            if (is_param_write(reply->code)) h->hold_until_us = esp_timer_get_time() + h->write_gap_us;
+            if (is_param_write(reply->code)) {
+                uint32_t gap = h->last_store ? h->store_gap_us : h->write_gap_us;
+                h->hold_until_us = esp_timer_get_time() + gap;
+            }
             return ESP_OK;
         }
         if (h->cb) h->cb(reply, h->cb_ctx);

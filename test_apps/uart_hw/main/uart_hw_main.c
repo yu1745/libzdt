@@ -118,17 +118,19 @@ static void test_writes(uint8_t a)
     zdt_reply_t r;
     char name[48];
 
-    /* 5.6.21：读出当前窗口，单字节写回同值 */
+    /* 5.6.21：读出当前窗口，按手册格式写回同值。Emm 固件（00CD）拒收（00 EE），X 固件接受 */
     int n = zdtBuildReadPosWindowCmd(a, f, sizeof f);
     esp_err_t err = xfer(f, n, &r);
-    uint8_t win = r.len >= 1 ? r.data[r.len - 1] : 0;      /* 应答 00 03，写过后变成 03 6B（固件怪现象） */
-    if (r.len == 2 && r.data[1] == 0x6B) win = r.data[0];
+    uint16_t win = r.len == 2 ? (uint16_t)(r.data[0] << 8 | r.data[1]) : 0;
     snprintf(name, sizeof name, "pos_window same id%u", a);
-    if (err != ESP_OK || win < 2) {
-        report(name, false, "read %s win=%u", esp_err_to_name(err), win);
+    if (err != ESP_OK || r.len != 2) {
+        report(name, false, "read %s len=%u", esp_err_to_name(err), r.len);
     } else {
         n = zdtBuildWritePosWindowCmd(a, ZDT_STORE_NO, win, f, sizeof f);
-        expect_ok(name, f, n);
+        err = xfer(f, n, &r);
+        bool emm_reject = err == ESP_OK && r.code == 0x00 && r.data[0] == ZDT_REPLY_FORMAT_ERR;
+        report(name, err == ESP_OK && (zdt_reply_is_ok(&r) || emm_reject), "%s code=%02X d0=%02X",
+               esp_err_to_name(err), r.code, r.data[0]);
     }
 
     /* 回零参数：读出后原样写回（不触发回零） */

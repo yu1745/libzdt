@@ -61,7 +61,7 @@ static void test_builders_vs_hw(void)
       "01 4A C3 00 00 00 65 90 00 00 00 14 00 0F A0 00 6B");
     T("5.6.19", zdtBuildWriteDmx512Cmd(1, 0, 192, 1, 1, 1000, 1000, 10, 100, b, sizeof b),
       "01 D9 90 00 00 C0 01 01 03 E8 03 E8 00 0A 00 00 00 64 6B");
-    T("5.6.21", zdtBuildWritePosWindowCmd(1, 0, 4, b, sizeof b), "01 D1 07 00 04 6B");
+    T("5.6.21", zdtBuildWritePosWindowCmd(1, 0, 3, b, sizeof b), "01 D1 07 00 00 03 6B");
     T("5.6.23", zdtBuildWriteProtectThresholdCmd(1, 0, 100, 6600, 1000, b, sizeof b),
       "01 D3 56 00 00 64 19 C8 03 E8 6B");
     T("5.6.25", zdtBuildWriteHeartbeatCmd(1, 0, 0, b, sizeof b), "01 68 38 00 00 00 00 00 6B");
@@ -207,13 +207,13 @@ static void test_checksum(void)
     CHECK(zdt_ttl_parse(rx, 4, ZDT_CHECKSUM_FIXED_6B, ZDT_FW_EMM, &r) == ZDT_ERR_FRAME, "6B rejects xor frame");
 }
 
-/* CAN 构建函数仍等于原始帧拆包，且 5.6.21 的单字节修正同时作用于 CAN */
+/* CAN 构建函数仍等于原始帧拆包（5.6.21 为手册的 BE16 格式） */
 static void test_can_still_packs_raw(void)
 {
     zdt_can_msg_t m;
     int n = zdtCanBuildWritePosWindowCmd(1, 1, 8, &m);
-    CHECK(n == 1 && m.frames[0].id == 0x100 && m.frames[0].dlc == 5 &&
-          memcmp(m.frames[0].data, (const uint8_t[]){0xD1, 0x07, 0x01, 0x08, 0x6B}, 5) == 0, "can 5.6.21");
+    CHECK(n == 1 && m.frames[0].id == 0x100 && m.frames[0].dlc == 6 &&
+          memcmp(m.frames[0].data, (const uint8_t[]){0xD1, 0x07, 0x01, 0x00, 0x08, 0x6B}, 6) == 0, "can 5.6.21");
     n = zdtCanBuildPosModeEmmCmd(1, 0, 10, 10, 711, ZDT_MOVE_REL_NOW, 0, &m);
     CHECK(n == 2 && m.frames[0].dlc == 8 && m.frames[1].dlc == 5 && m.frames[1].data[0] == 0xFD, "can 5.3.12 split");
 }

@@ -371,26 +371,26 @@ int zdtCanBuildReadPosWindowCmd(uint8_t addr, zdt_can_msg_t *msg)
     return zdt_pack_can_msg(addr, raw, (size_t)len, msg);
 }
 
-/* 5.6.21 修改位置到达窗口 (X42S/Y42)  Addr + D1 + 07 + store + window(u8, ×0.1°) + 6B  — 6B
- * 真机验证（X42S Emm，2026-10-29）：窗口值是单字节；按手册写成 BE16 的 7 字节帧电机回 00 EE。
- * 读取命令 5.6.20 的应答仍是 2 字节。 */
-int zdtBuildWritePosWindowCmd(uint8_t addr, uint8_t store, uint8_t window_x10,
+/* 5.6.21 修改位置到达窗口 (X42S/Y42)  Addr + D1 + 07 + store + window(BE16, ×0.1°) + 6B  — 7B
+ * 真机（X42S，固件 00CD，2026-10-29）：X 固件接受本格式；Emm 固件回 00 EE。Emm 固件接受的
+ * 6 字节帧会把校验字节当作数值低字节（写 03 得到 0x036B），不能用。窗口参数两种固件共用。 */
+int zdtBuildWritePosWindowCmd(uint8_t addr, uint8_t store, uint16_t window_x10,
                               uint8_t *buf, size_t max_len)
 {
-    const size_t need = 6;
+    const size_t need = 7;
     size_t i = 0;
     if (zdt_check_size(0, need, max_len) != ZDT_OK) return ZDT_ERR_BUF_TOO_SMALL;
     zdt_append_u8(buf, &i, max_len, addr);
     zdt_append_u8(buf, &i, max_len, 0xD1);
     zdt_append_u8(buf, &i, max_len, 0x07);
     zdt_append_u8(buf, &i, max_len, store);
-    zdt_append_u8(buf, &i, max_len, window_x10);
+    zdt_append_u16_be(buf, &i, max_len, window_x10);
     zdt_append_u8(buf, &i, max_len, ZDT_CHECKSUM_DEFAULT);
     return (int)i;
 }
 
 int zdtCanBuildWritePosWindowCmd(uint8_t addr, uint8_t store,
-                                uint8_t window_x10,
+                                uint16_t window_x10,
                                 zdt_can_msg_t *msg)
 {
     uint8_t raw[16];

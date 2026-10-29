@@ -308,8 +308,9 @@ int zdtBuildReadPosWindowCmd(uint8_t addr, uint8_t *buf, size_t max_len);
 
 /**
  * @brief 5.6.21 修改位置到达窗口 (X42S/Y42)
- * 原始命令: Addr + D1 + 07 + store + window(u8, ×0.1°) + 6B (6 字节 -> 1 帧 CAN)
- * 手册写窗口值为 2 字节；真机只接受 1 字节（2 字节帧回 00 EE）。
+ * 原始命令: Addr + D1 + 07 + store + window(BE16, ×0.1°) + 6B (7 字节 -> 1 帧 CAN)
+ * 真机（固件 00CD）：X 固件接受；Emm 固件回 00 EE（固件缺陷）。窗口参数两种固件共用，
+ * Emm 下需要修改时可临时用 5.6.6 不存储切到 X 写入再切回。
  *
  * @param addr       电机地址 (0x01..0xFF, 0x00 为广播)
  * @param store      是否存储: ZDT_STORE_NO(0x00) / ZDT_STORE_YES(0x01)
@@ -318,11 +319,11 @@ int zdtBuildReadPosWindowCmd(uint8_t addr, uint8_t *buf, size_t max_len);
  * @return 成功返回生成的 CAN 帧数 (>=1)，失败返回负数错误码
  */
 int zdtCanBuildWritePosWindowCmd(uint8_t addr, uint8_t store,
-                                uint8_t window_x10,
+                                uint16_t window_x10,
                                 zdt_can_msg_t *msg);
 
 /** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
-int zdtBuildWritePosWindowCmd(uint8_t addr, uint8_t store, uint8_t window_x10,
+int zdtBuildWritePosWindowCmd(uint8_t addr, uint8_t store, uint16_t window_x10,
                               uint8_t *buf, size_t max_len);
 
 /**
