@@ -48,6 +48,11 @@ int zdtCanBuildSpeedModeEmmCmd(uint8_t addr, uint8_t dir, uint16_t rpm,
                               uint8_t acc, uint8_t sync,
                               zdt_can_msg_t *msg);
 
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildSpeedModeEmmCmd(uint8_t addr, uint8_t dir, uint16_t rpm,
+                            uint8_t acc, uint8_t sync,
+                            uint8_t *buf, size_t buf_size);
+
 /**
  * @brief 5.3.12 位置模式控制 (Emm)
  *
@@ -68,6 +73,12 @@ int zdtCanBuildPosModeEmmCmd(uint8_t addr, uint8_t dir, uint16_t rpm,
                              uint8_t move_mode, uint8_t sync,
                              zdt_can_msg_t *msg);
 
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildPosModeEmmCmd(uint8_t addr, uint8_t dir, uint16_t rpm,
+                          uint8_t acc, uint32_t pulses,
+                          uint8_t move_mode, uint8_t sync,
+                          uint8_t *buf, size_t buf_size);
+
 /* ====================================================================
  *  5.6 修改驱动参数命令 (Emm 固件特有)
  * ==================================================================== */
@@ -87,6 +98,11 @@ int zdtCanBuildChangeSpeedScaleCmd(uint8_t addr, uint8_t store,
                                    uint8_t scale_10x,
                                    zdt_can_msg_t *msg);
 
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildChangeSpeedScaleCmd(uint8_t addr, uint8_t store,
+                                uint8_t scale_10x,
+                                uint8_t *buf, size_t buf_size);
+
 /**
  * @brief 5.6.16 读取 PID 参数 (Emm)
  *
@@ -97,6 +113,9 @@ int zdtCanBuildChangeSpeedScaleCmd(uint8_t addr, uint8_t store,
  * @return 成功返回写入的 CAN 帧数 (>=1)，失败返回负数错误码 (ZDT_ERR_PARAM)
  */
 int zdtCanBuildReadPidEmmCmd(uint8_t addr, zdt_can_msg_t *msg);
+
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildReadPidEmmCmd(uint8_t addr, uint8_t *buf, size_t buf_size);
 
 /**
  * @brief 5.6.17 修改 PID 参数 (Emm)
@@ -114,6 +133,11 @@ int zdtCanBuildReadPidEmmCmd(uint8_t addr, zdt_can_msg_t *msg);
 int zdtCanBuildWritePidEmmCmd(uint8_t addr, uint8_t store,
                               uint32_t kp, uint32_t ki, uint32_t kd,
                               zdt_can_msg_t *msg);
+
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildWritePidEmmCmd(uint8_t addr, uint8_t store,
+                           uint32_t kp, uint32_t ki, uint32_t kd,
+                           uint8_t *buf, size_t buf_size);
 
 /* ====================================================================
  *  5.7 上电自动运行命令 (Emm 固件特有)
@@ -138,6 +162,12 @@ int zdtCanBuildStoreAutoRunEmmCmd(uint8_t addr, uint8_t store,
                                   uint8_t acc_level, uint8_t en_pin_enable,
                                   zdt_can_msg_t *msg);
 
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildStoreAutoRunEmmCmd(uint8_t addr, uint8_t store,
+                               uint8_t dir, uint16_t speed_rpm,
+                               uint8_t acc_level, uint8_t en_pin_enable,
+                               uint8_t *buf, size_t buf_size);
+
 /* ====================================================================
  *  5.8 读取与修改所有驱动参数命令 (Emm 固件特有)
  * ==================================================================== */
@@ -153,6 +183,9 @@ int zdtCanBuildStoreAutoRunEmmCmd(uint8_t addr, uint8_t store,
  */
 int zdtCanBuildReadAllStatusEmmCmd(uint8_t addr, zdt_can_msg_t *msg);
 
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildReadAllStatusEmmCmd(uint8_t addr, uint8_t *buf, size_t buf_size);
+
 /**
  * @brief 5.8.5 读取驱动配置参数 (Emm)
  *
@@ -163,6 +196,9 @@ int zdtCanBuildReadAllStatusEmmCmd(uint8_t addr, zdt_can_msg_t *msg);
  * @return 成功返回写入的 CAN 帧数 (>=1)，失败返回负数错误码 (ZDT_ERR_PARAM)
  */
 int zdtCanBuildReadAllConfigEmmCmd(uint8_t addr, zdt_can_msg_t *msg);
+
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildReadAllConfigEmmCmd(uint8_t addr, uint8_t *buf, size_t buf_size);
 
 /**
  * @brief 5.8.6 修改驱动配置参数 (Emm)
@@ -209,6 +245,24 @@ int zdtCanBuildWriteAllConfigEmmCmd(uint8_t addr, uint8_t store,
                                     uint16_t stall_time_ms,
                                     uint16_t pos_window,
                                     zdt_can_msg_t *msg);
+
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildWriteAllConfigEmmCmd(uint8_t addr, uint8_t store,
+                                 uint8_t motor_type,
+                                 uint8_t pul_mode, uint8_t com_mode,
+                                 uint8_t en_level, uint8_t dir_level,
+                                 uint8_t microstep, uint8_t interp,
+                                 uint16_t open_current_ma,
+                                 uint16_t stall_current_ma,
+                                 uint16_t max_voltage_code,
+                                 uint8_t uart_baud, uint8_t can_speed,
+                                 uint8_t check_mode, uint8_t reply_mode,
+                                 uint8_t stall_protect,
+                                 uint16_t stall_speed_rpm,
+                                 uint16_t stall_current_ma2,
+                                 uint16_t stall_time_ms,
+                                 uint16_t pos_window,
+                                 uint8_t *buf, size_t buf_size);
 
 #ifdef __cplusplus
 }

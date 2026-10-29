@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 /*
- * zdt_common_param.h - 通用读写驱动参数模块 (CAN 扩展帧构建)
+ * zdt_common_param.h - 通用读写驱动参数模块 (串口 TTL 原始帧 / CAN 扩展帧构建)
  *
  * CAN 分帧说明：下列“原始命令”包含 Addr，供与手册逐字节对照；CAN 将
  * Addr 编入 EID=(Addr<<8)|Packet（Packet 从 0 开始）。CAN data 从 Code
@@ -65,6 +65,10 @@ int zdtCanBuildChangeAddrCmd(uint8_t addr, uint8_t store,
                             uint8_t new_addr,
                             zdt_can_msg_t *msg);
 
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildChangeAddrCmd(uint8_t addr, uint8_t store, uint8_t new_addr,
+                          uint8_t *buf, size_t max_len);
+
 /**
  * @brief 5.6.2 修改细分值
  * 原始命令: Addr + 84 + 8A + store + microstep + 6B (6 字节 -> 1 帧 CAN)
@@ -79,6 +83,10 @@ int zdtCanBuildChangeMicrostepCmd(uint8_t addr, uint8_t store,
                                  uint8_t microstep,
                                  zdt_can_msg_t *msg);
 
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildChangeMicrostepCmd(uint8_t addr, uint8_t store, uint8_t microstep,
+                               uint8_t *buf, size_t max_len);
+
 /**
  * @brief 5.6.3 修改掉电标志
  * 原始命令: Addr + 50 + flag + 6B (4 字节 -> 1 帧 CAN)
@@ -91,6 +99,10 @@ int zdtCanBuildChangeMicrostepCmd(uint8_t addr, uint8_t store,
 int zdtCanBuildChangePowerDownFlagCmd(uint8_t addr, uint8_t flag,
                                      zdt_can_msg_t *msg);
 
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildChangePowerDownFlagCmd(uint8_t addr, uint8_t flag,
+                                   uint8_t *buf, size_t max_len);
+
 /**
  * @brief 5.6.4 读取选项参数状态 (X42S/Y42)
  * 原始命令: Addr + 1A + 6B (3 字节 -> 1 帧 CAN)
@@ -100,6 +112,9 @@ int zdtCanBuildChangePowerDownFlagCmd(uint8_t addr, uint8_t flag,
  * @return 成功返回生成的 CAN 帧数 (>=1)，失败返回负数错误码
  */
 int zdtCanBuildReadOptionsCmd(uint8_t addr, zdt_can_msg_t *msg);
+
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildReadOptionsCmd(uint8_t addr, uint8_t *buf, size_t max_len);
 
 /**
  * @brief 5.6.5 修改电机类型
@@ -115,6 +130,10 @@ int zdtCanBuildChangeMotorTypeCmd(uint8_t addr, uint8_t store,
                                  uint8_t motor_type,
                                  zdt_can_msg_t *msg);
 
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildChangeMotorTypeCmd(uint8_t addr, uint8_t store, uint8_t motor_type,
+                               uint8_t *buf, size_t max_len);
+
 /**
  * @brief 5.6.6 修改固件类型
  * 原始命令: Addr + D5 + 69 + store + fw_type + 6B (6 字节 -> 1 帧 CAN)
@@ -128,6 +147,10 @@ int zdtCanBuildChangeMotorTypeCmd(uint8_t addr, uint8_t store,
 int zdtCanBuildChangeFirmwareTypeCmd(uint8_t addr, uint8_t store,
                                     uint8_t fw_type,
                                     zdt_can_msg_t *msg);
+
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildChangeFirmwareTypeCmd(uint8_t addr, uint8_t store, uint8_t fw_type,
+                                  uint8_t *buf, size_t max_len);
 
 /**
  * @brief 5.6.7 修改开环/闭环控制模式
@@ -143,6 +166,10 @@ int zdtCanBuildChangeCtrlModeCmd(uint8_t addr, uint8_t store,
                                 uint8_t mode,
                                 zdt_can_msg_t *msg);
 
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildChangeCtrlModeCmd(uint8_t addr, uint8_t store, uint8_t mode,
+                              uint8_t *buf, size_t max_len);
+
 /**
  * @brief 5.6.8 修改电机运动正方向
  * 原始命令: Addr + D4 + 60 + store + dir + 6B (6 字节 -> 1 帧 CAN)
@@ -156,6 +183,10 @@ int zdtCanBuildChangeCtrlModeCmd(uint8_t addr, uint8_t store,
 int zdtCanBuildChangeMotorDirCmd(uint8_t addr, uint8_t store,
                                 uint8_t dir,
                                 zdt_can_msg_t *msg);
+
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildChangeMotorDirCmd(uint8_t addr, uint8_t store, uint8_t dir,
+                              uint8_t *buf, size_t max_len);
 
 /**
  * @brief 5.6.9 修改锁定按键功能
@@ -171,6 +202,10 @@ int zdtCanBuildChangeKeyLockCmd(uint8_t addr, uint8_t store,
                                uint8_t lock,
                                zdt_can_msg_t *msg);
 
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildChangeKeyLockCmd(uint8_t addr, uint8_t store, uint8_t lock,
+                             uint8_t *buf, size_t max_len);
+
 /**
  * @brief 5.6.12 修改开环模式工作电流
  * 原始命令: Addr + 44 + 33 + store + current(BE16) + 6B (7 字节 -> 1 帧 CAN)
@@ -184,6 +219,10 @@ int zdtCanBuildChangeKeyLockCmd(uint8_t addr, uint8_t store,
 int zdtCanBuildChangeOpenLoopCurrentCmd(uint8_t addr, uint8_t store,
                                        uint16_t current_ma,
                                        zdt_can_msg_t *msg);
+
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildChangeOpenLoopCurrentCmd(uint8_t addr, uint8_t store, uint16_t current_ma,
+                                     uint8_t *buf, size_t max_len);
 
 /**
  * @brief 5.6.13 修改闭环模式最大电流
@@ -199,6 +238,10 @@ int zdtCanBuildChangeClosedLoopCurrentCmd(uint8_t addr, uint8_t store,
                                          uint16_t current_ma,
                                          zdt_can_msg_t *msg);
 
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildChangeClosedLoopCurrentCmd(uint8_t addr, uint8_t store, uint16_t current_ma,
+                                       uint8_t *buf, size_t max_len);
+
 /**
  * @brief 5.6.18 读取 DMX512 协议参数 (X42S/Y42)
  * 原始命令: Addr + 49 + 78 + 6B (4 字节 -> 1 帧 CAN)
@@ -208,6 +251,9 @@ int zdtCanBuildChangeClosedLoopCurrentCmd(uint8_t addr, uint8_t store,
  * @return 成功返回生成的 CAN 帧数 (>=1)，失败返回负数错误码
  */
 int zdtCanBuildReadDmx512Cmd(uint8_t addr, zdt_can_msg_t *msg);
+
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildReadDmx512Cmd(uint8_t addr, uint8_t *buf, size_t max_len);
 
 /**
  * @brief 5.6.19 修改 DMX512 协议参数 (X42S/Y42)
@@ -236,6 +282,17 @@ int zdtCanBuildWriteDmx512Cmd(uint8_t addr, uint8_t store,
                              uint32_t motion_step,
                              zdt_can_msg_t *msg);
 
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildWriteDmx512Cmd(uint8_t addr, uint8_t store,
+                           uint16_t total_channels,
+                           uint8_t channels_per_motor,
+                           uint8_t move_mode,
+                           uint16_t single_speed_rpm,
+                           uint16_t accel,
+                           uint16_t speed_step,
+                           uint32_t motion_step,
+                           uint8_t *buf, size_t max_len);
+
 /**
  * @brief 5.6.20 读取位置到达窗口 (X42S/Y42)
  * 原始命令: Addr + 41 + 6B (3 字节 -> 1 帧 CAN)
@@ -246,19 +303,27 @@ int zdtCanBuildWriteDmx512Cmd(uint8_t addr, uint8_t store,
  */
 int zdtCanBuildReadPosWindowCmd(uint8_t addr, zdt_can_msg_t *msg);
 
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildReadPosWindowCmd(uint8_t addr, uint8_t *buf, size_t max_len);
+
 /**
  * @brief 5.6.21 修改位置到达窗口 (X42S/Y42)
- * 原始命令: Addr + D1 + 07 + store + window(BE16, ×0.1°) + 6B (7 字节 -> 1 帧 CAN)
+ * 原始命令: Addr + D1 + 07 + store + window(u8, ×0.1°) + 6B (6 字节 -> 1 帧 CAN)
+ * 手册写窗口值为 2 字节；真机只接受 1 字节（2 字节帧回 00 EE）。
  *
  * @param addr       电机地址 (0x01..0xFF, 0x00 为广播)
  * @param store      是否存储: ZDT_STORE_NO(0x00) / ZDT_STORE_YES(0x01)
- * @param window_x10 到达窗口阈值 (BE16，单位 0.1°；例如 8 代表 0.8°)
+ * @param window_x10 到达窗口阈值 (单位 0.1°；例如 8 代表 0.8°)
  * @param msg        输出 CAN 报文集合指针
  * @return 成功返回生成的 CAN 帧数 (>=1)，失败返回负数错误码
  */
 int zdtCanBuildWritePosWindowCmd(uint8_t addr, uint8_t store,
-                                uint16_t window_x10,
+                                uint8_t window_x10,
                                 zdt_can_msg_t *msg);
+
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildWritePosWindowCmd(uint8_t addr, uint8_t store, uint8_t window_x10,
+                              uint8_t *buf, size_t max_len);
 
 /**
  * @brief 5.6.22 读取过热过流保护检测阈值 (X42S/Y42)
@@ -269,6 +334,9 @@ int zdtCanBuildWritePosWindowCmd(uint8_t addr, uint8_t store,
  * @return 成功返回生成的 CAN 帧数 (>=1)，失败返回负数错误码
  */
 int zdtCanBuildReadProtectThresholdCmd(uint8_t addr, zdt_can_msg_t *msg);
+
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildReadProtectThresholdCmd(uint8_t addr, uint8_t *buf, size_t max_len);
 
 /**
  * @brief 5.6.23 修改过热过流保护检测阈值 (X42S/Y42)
@@ -288,6 +356,13 @@ int zdtCanBuildWriteProtectThresholdCmd(uint8_t addr, uint8_t store,
                                        uint16_t detect_ms,
                                        zdt_can_msg_t *msg);
 
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildWriteProtectThresholdCmd(uint8_t addr, uint8_t store,
+                                     uint16_t overheat_c,
+                                     uint16_t overcurrent_ma,
+                                     uint16_t detect_ms,
+                                     uint8_t *buf, size_t max_len);
+
 /**
  * @brief 5.6.24 读取心跳保护功能时间 (X42S/Y42)
  * 原始命令: Addr + 16 + 6B (3 字节 -> 1 帧 CAN)
@@ -297,6 +372,9 @@ int zdtCanBuildWriteProtectThresholdCmd(uint8_t addr, uint8_t store,
  * @return 成功返回生成的 CAN 帧数 (>=1)，失败返回负数错误码
  */
 int zdtCanBuildReadHeartbeatCmd(uint8_t addr, zdt_can_msg_t *msg);
+
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildReadHeartbeatCmd(uint8_t addr, uint8_t *buf, size_t max_len);
 
 /**
  * @brief 5.6.25 修改心跳保护功能时间 (X42S/Y42)
@@ -312,6 +390,10 @@ int zdtCanBuildWriteHeartbeatCmd(uint8_t addr, uint8_t store,
                                 uint32_t heartbeat_ms,
                                 zdt_can_msg_t *msg);
 
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildWriteHeartbeatCmd(uint8_t addr, uint8_t store, uint32_t heartbeat_ms,
+                              uint8_t *buf, size_t max_len);
+
 /**
  * @brief 5.6.26 读取积分限幅/刚性系数 (X42S/Y42)
  * 原始命令: Addr + 23 + 6B (3 字节 -> 1 帧 CAN)
@@ -321,6 +403,9 @@ int zdtCanBuildWriteHeartbeatCmd(uint8_t addr, uint8_t store,
  * @return 成功返回生成的 CAN 帧数 (>=1)，失败返回负数错误码
  */
 int zdtCanBuildReadIntegralLimitCmd(uint8_t addr, zdt_can_msg_t *msg);
+
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildReadIntegralLimitCmd(uint8_t addr, uint8_t *buf, size_t max_len);
 
 /**
  * @brief 5.6.27 修改积分限幅/刚性系数 (X42S/Y42)
@@ -336,6 +421,10 @@ int zdtCanBuildWriteIntegralLimitCmd(uint8_t addr, uint8_t store,
                                     uint32_t value,
                                     zdt_can_msg_t *msg);
 
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildWriteIntegralLimitCmd(uint8_t addr, uint8_t store, uint32_t value,
+                                  uint8_t *buf, size_t max_len);
+
 /**
  * @brief 5.6.28 读取碰撞回零返回角度 (X42S/Y42)
  * 原始命令: Addr + 3F + 6B (3 字节 -> 1 帧 CAN)
@@ -345,6 +434,9 @@ int zdtCanBuildWriteIntegralLimitCmd(uint8_t addr, uint8_t store,
  * @return 成功返回生成的 CAN 帧数 (>=1)，失败返回负数错误码
  */
 int zdtCanBuildReadBumpReturnAngleCmd(uint8_t addr, zdt_can_msg_t *msg);
+
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildReadBumpReturnAngleCmd(uint8_t addr, uint8_t *buf, size_t max_len);
 
 /**
  * @brief 5.6.29 修改碰撞回零返回角度 (X42S/Y42)
@@ -360,6 +452,10 @@ int zdtCanBuildWriteBumpReturnAngleCmd(uint8_t addr, uint8_t store,
                                       uint16_t angle_x10,
                                       zdt_can_msg_t *msg);
 
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildWriteBumpReturnAngleCmd(uint8_t addr, uint8_t store, uint16_t angle_x10,
+                                    uint8_t *buf, size_t max_len);
+
 /**
  * @brief 5.6.30 广播读取 ID 地址 (广播命令)
  * 原始命令: 00 + 15 + 6B (3 字节 -> 1 帧 CAN)
@@ -368,6 +464,9 @@ int zdtCanBuildWriteBumpReturnAngleCmd(uint8_t addr, uint8_t store,
  * @return 成功返回生成的 CAN 帧数 (>=1)，失败返回负数错误码
  */
 int zdtCanBuildBroadcastReadAddrCmd(zdt_can_msg_t *msg);
+
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildBroadcastReadAddrCmd(uint8_t *buf, size_t max_len);
 
 /**
  * @brief 5.6.31 修改锁定修改参数功能 (X42S/Y42)
@@ -382,6 +481,10 @@ int zdtCanBuildBroadcastReadAddrCmd(zdt_can_msg_t *msg);
 int zdtCanBuildChangeParamLockCmd(uint8_t addr, uint8_t store,
                                  uint8_t lock_level,
                                  zdt_can_msg_t *msg);
+
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildChangeParamLockCmd(uint8_t addr, uint8_t store, uint8_t lock_level,
+                               uint8_t *buf, size_t max_len);
 
 #ifdef __cplusplus
 }

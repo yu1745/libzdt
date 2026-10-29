@@ -1,16 +1,35 @@
 # libzdt
 
-ZDT_X42S 第二代闭环步进电机（含 Y42 / Emm 固件变体）的 **ESP-IDF 组件**：构建手册第 5 章 5.2–5.8 的 82 条主机命令的 CAN 扩展帧，并用 TWAI 驱动完成发送、多包拆装和应答接收。
+ZDT_X42S 第二代闭环步进电机（含 Y42 / Emm 固件变体）的 **ESP-IDF 组件**：构建手册第 5 章 5.2–5.8 的 82 条主机命令，串口 TTL 与 CAN 两种传输都支持——UART 驱动负责发送和应答分帧，TWAI 驱动负责发送、多包拆装和应答接收。
 
 - 要求 ESP-IDF ≥ 6.1（使用新的基于节点的 TWAI 驱动 `esp_driver_twai`）
 - 协议依据：[《ZDT_X42S 第二代闭环步进电机用户手册 V1.0.3》](./ZDT_X42S第二代闭环步进电机用户手册V1.0.3_251224.pdf)，随仓库附带
-- 只支持 CAN（TWAI），不含 UART / Modbus；校验码固定 `0x6B`
+- 串口校验支持 `0x6B` / XOR / CRC8；不含 Modbus。CAN 校验码固定 `0x6B`
 
 ## 用法
+
+串口 TTL：
 
 ```c
 #include "libzdt.h"
 
+zdt_uart_handle_t bus;
+zdt_uart_config_t cfg = {
+    .port = UART_NUM_1, .tx_io = GPIO_NUM_1, .rx_io = GPIO_NUM_0,
+    .baud_rate = 115200, .checksum = ZDT_CHECKSUM_FIXED_6B, .firmware = ZDT_FW_EMM,
+};
+ESP_ERROR_CHECK(zdt_uart_new(&cfg, &bus));
+
+uint8_t frame[16];
+zdt_reply_t reply;
+int n = zdtBuildReadRealtimePosCmd(1, frame, sizeof frame);   /* 构建：01 36 6B */
+zdt_uart_transact(bus, frame, n, &reply, 200);                /* 发送并等应答 */
+/* reply.data = 符号 + u32 位置（Emm：65536 = 360°） */
+```
+
+CAN：
+
+```c
 zdt_twai_handle_t bus;
 zdt_twai_config_t cfg = { .tx_io = GPIO_NUM_4, .rx_io = GPIO_NUM_5, .bitrate = 500000 };
 ESP_ERROR_CHECK(zdt_twai_new(&cfg, &bus));
@@ -25,14 +44,21 @@ if (zdt_reply_is_ok(&reply)) { /* 02 */ }
 
 完整例子见 [`examples/basic`](./examples/basic)。
 
-两层 API：
-
 | 层 | 头文件 | 作用 |
 |---|---|---|
-| 构建 | `zdt_common_*.h` `zdt_x.h` `zdt_emm.h` | `zdtCanBuild*Cmd(...)` 把参数编码成 `zdt_can_msg_t`（1–8 个 CAN 帧）。纯计算，不访问硬件 |
-| 收发 | `zdt_twai.h` | `zdt_twai_new/del`、`zdt_twai_send`、`zdt_twai_recv_reply`、`zdt_twai_transact` |
+| 构建 | `zdt_common_*.h` `zdt_x.h` `zdt_emm.h` | 每条命令两个函数：`zdtBuild*Cmd(..., buf, len)` 输出串口原始帧（返回帧长）；`zdtCanBuild*Cmd(..., &msg)` 输出 `zdt_can_msg_t`（1–8 个 CAN 帧）。纯计算，不访问硬件 |
+| 串口分帧 | `zdt_frame.h` | 校验字节计算 / 改写、按功能码查应答长度、从字节流切出一帧。纯计算 |
+| 串口收发 | `zdt_uart.h` | `zdt_uart_new/del`、`zdt_uart_send`、`zdt_uart_recv_reply`、`zdt_uart_transact`、`zdt_uart_poll`、事件回调 |
+| CAN 收发 | `zdt_twai.h` | `zdt_twai_new/del`、`zdt_twai_send`、`zdt_twai_recv_reply`、`zdt_twai_transact` |
 
-应答（`zdt_reply_t`）：`code` 为功能码，`data` 为功能码之后、校验字节之前的内容，状态类命令的 `data[0]` 是 `ZDT_REPLY_OK(02)` / `ZDT_REPLY_PARAM_ERR(E2)` / `ZDT_REPLY_FORMAT_ERR(EE)`；位置到位、回零完成、夹爪夹紧时电机会主动再发一帧 `ZDT_REPLY_DONE(9F)`，用 `zdt_twai_recv_reply` 单独接收。
+应答（`zdt_reply_t`）：`code` 为功能码，`data` 为功能码之后、校验字节之前的内容，状态类命令的 `data[0]` 是 `ZDT_REPLY_OK(02)` / `ZDT_REPLY_PARAM_ERR(E2)` / `ZDT_REPLY_FORMAT_ERR(EE)`。命令格式错误时电机回 `Addr 00 EE`（`code` 为 0）。位置到位、回零完成、夹爪夹紧时电机会主动再发一帧 `ZDT_REPLY_DONE(9F)`（需电机应答方式为 Reached / Both）：CAN 用 `zdt_twai_recv_reply` 单独接收；串口上与当前请求无关的帧（9F、定时返回、其它地址）交给 `zdt_uart_set_event_cb` 设置的回调，空闲时调用 `zdt_uart_poll` 分派。
+
+## 串口帧规则（手册 4.1，p.39；真机核对）
+
+- 请求就是手册里的"原始命令"：`Addr + Code + 数据 + 校验`，校验出厂为固定 `0x6B`
+- 应答没有长度字段：`zdt_ttl_parse` 按功能码查长度；`42` / `43` 的第 3 字节是整帧长度；`Addr 00 EE 校验` 为格式错误
+- 广播（地址 0）命令只有地址 1 的电机应答；一帧里让多台电机都回数据（`AA` 打包读取、广播读 ID）会在总线上撞包
+- 修改参数类命令应答后约 2 ms 内电机不接收新命令，`zdt_uart` 自动等待 `write_gap_us`（默认 5 ms）
 
 ## CAN 帧规则（手册 4.2，p.41–43）
 
@@ -47,14 +73,32 @@ if (zdt_reply_is_ok(&reply)) { /* 02 */ }
 
 ```
 include/            公共头文件
-src/                实现（构建函数 + TWAI 收发）
+src/                实现（构建函数 + 串口分帧 / 收发 + TWAI 收发）
 examples/basic/     最小用法
-test_apps/e2e/      端到端测试固件（跑在 QEMU 里）
+tests/host/         主机单元测试（构建函数、校验、分帧；金样本来自真机）
+test_apps/uart_hw/  串口真机测试固件（ESP32-C3 直连电机）
+test_apps/e2e/      CAN 端到端测试固件（跑在 QEMU 里）
 tools/fake_motor.py 宿主机上的假电机（SocketCAN）
 tools/run_e2e.sh    一键运行端到端测试
 ```
 
-## 端到端测试（不需要真电机）
+## 主机单元测试
+
+```bash
+make -C tests/host test
+```
+
+覆盖：33 条构建函数输出与真机接受的帧逐字节比对、93 组真机应答的分帧、乱码后重新同步、`00 EE`、`43` 自带长度、XOR / CRC8（CRC8 表与逐位实现全量比对）、CAN 拆包仍与原始帧一致。
+
+## 串口真机测试
+
+`test_apps/uart_hw` 在 ESP32-C3 上经 UART1（TX=GPIO1、RX=GPIO0）直连地址 1、2 的两台电机（X42S、Emm 固件、115200、6B 校验），打印 `HW PASS/FAIL`，最后 `HW SUMMARY`。只发无副作用的命令：28 条读取、store=00 写回同值、`00 EE`、定时返回 + 事件回调、±5° 相对当前位置的小幅运动（10 RPM，测完回到起点）、广播同步、多电机命令、600 次交替读取。不发回零、校准、恢复出厂、改 ID / 波特率 / 驱动配置。
+
+```bash
+cd test_apps/uart_hw && idf.py -p /dev/ttyACM0 flash monitor
+```
+
+## CAN 端到端测试（不需要真电机）
 
 固件在 QEMU（`esp32c3`，模拟了 TWAI）里运行，经宿主机的虚拟 CAN 网卡与 `fake_motor.py` 通信。假电机按手册规则重组多包、校验长度和参数范围，回 `02` / `E2` / `EE`，读命令返回数据，并在应答方式为 Both 时主动发 `9F`。
 
@@ -72,7 +116,9 @@ tools/run_e2e.sh
 
 ## 已知限制
 
-- **82 条命令里只有 9 条经过端到端验证**（使能、位置清零、速度(Emm)、位置(Emm)、立即停止、读总线电压、读实时位置、修改回零参数、修改驱动配置(Emm)）。其余命令的字节输出尚未逐条对照手册示例核验，不要假定它们已被锁定。
+- **真机只验证了串口 + Emm 固件**（X42S，固件 00CD）。82 条命令的请求格式都与手册逐节抽取的结果核对过；其中读取类与上面列出的写入 / 运动命令在真机上收发过。X 固件专用命令（力矩、X 速度 / 位置、X 的 PID / 驱动配置）、回零、校准、恢复出厂、改 ID / 类型 / 驱动配置没有真机验证；X 固件 `21`（读 PID）的应答长度 19 字节是按手册字段推算的。
+- 手册与真机不符之处：5.6.21 修改到位窗口的值是**单字节**（手册写 2 字节，真机回 `00 EE`；CAN 版同样修正）；5.6.4 读选项状态应答是 2 字节；5.5.1 停止定时返回的确认是 4 字节 `Addr 11 02 6B`；5.6.21 写过之后 5.6.20 的应答变成 `值 6B 6B`。此固件不接受 5.6.7 修改开环 / 闭环（回 `00 EE`）。
+- XOR / CRC8 校验只按手册附录实现并做了单元测试，没有在真机上切换校验方式验证（切换需要改驱动配置）。
 - 超过 8 字节的**应答**如何拆包，手册没有示例；`zdt_twai_recv_reply` 按与命令相同的规则（续包重复功能码）重组，未经真机验证。
 - 同功能码在 X 固件与 Emm 固件下含义不同（如 `F6`、`FD`、`4F 71`）。本库不自动判断固件类型，调用方必须选对 `…X…` / `…Emm…` 函数。
 - 假电机的命令长度表取自手册，但它不是电机固件的行为记录；它能证明收发链路和帧格式自洽，不能代替真机验证。

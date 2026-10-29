@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 /*
- * zdt_common_motion.h - 通用动作与运动控制模块 (CAN 扩展帧构建)
+ * zdt_common_motion.h - 通用动作与运动控制模块 (串口 TTL 原始帧 / CAN 扩展帧构建)
  *
  * CAN 分帧说明：下列“原始命令”包含 Addr，供与手册逐字节对照；CAN 将
  * Addr 编入 EID=(Addr<<8)|Packet（Packet 从 0 开始）。CAN data 从 Code
@@ -54,6 +54,9 @@ extern "C" {
  */
 int zdtCanBuildEncoderCalibrationCmd(uint8_t addr, zdt_can_msg_t *msg);
 
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildEncoderCalibrationCmd(uint8_t addr, uint8_t *buf, size_t buf_size);
+
 /**
  * @brief 5.2.2 重启电机 (X42S/Y42)
  * 原始命令: Addr + 08 + 97 + 6B (4 字节 -> 1 帧 CAN)
@@ -63,6 +66,9 @@ int zdtCanBuildEncoderCalibrationCmd(uint8_t addr, zdt_can_msg_t *msg);
  * @return 成功返回生成的 CAN 帧数 (>=1)，失败返回负数错误码
  */
 int zdtCanBuildRestartMotorCmd(uint8_t addr, zdt_can_msg_t *msg);
+
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildRestartMotorCmd(uint8_t addr, uint8_t *buf, size_t buf_size);
 
 /**
  * @brief 5.2.3 将当前位置角度清零
@@ -74,6 +80,9 @@ int zdtCanBuildRestartMotorCmd(uint8_t addr, zdt_can_msg_t *msg);
  */
 int zdtCanBuildClearCurrentAngleCmd(uint8_t addr, zdt_can_msg_t *msg);
 
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildClearCurrentAngleCmd(uint8_t addr, uint8_t *buf, size_t buf_size);
+
 /**
  * @brief 5.2.4 解除堵转/过热/过流保护
  * 原始命令: Addr + 0E + 52 + 6B (4 字节 -> 1 帧 CAN)
@@ -84,6 +93,9 @@ int zdtCanBuildClearCurrentAngleCmd(uint8_t addr, zdt_can_msg_t *msg);
  */
 int zdtCanBuildClearProtectionCmd(uint8_t addr, zdt_can_msg_t *msg);
 
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildClearProtectionCmd(uint8_t addr, uint8_t *buf, size_t buf_size);
+
 /**
  * @brief 5.2.5 恢复出厂设置
  * 原始命令: Addr + 0F + 5F + 6B (4 字节 -> 1 帧 CAN)
@@ -93,6 +105,9 @@ int zdtCanBuildClearProtectionCmd(uint8_t addr, zdt_can_msg_t *msg);
  * @return 成功返回生成的 CAN 帧数 (>=1)，失败返回负数错误码
  */
 int zdtCanBuildFactoryResetCmd(uint8_t addr, zdt_can_msg_t *msg);
+
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildFactoryResetCmd(uint8_t addr, uint8_t *buf, size_t buf_size);
 
 /* ====================================================================
  *  5.3 运动控制命令 (通用 4 条)
@@ -110,6 +125,10 @@ int zdtCanBuildFactoryResetCmd(uint8_t addr, zdt_can_msg_t *msg);
 int zdtCanBuildMultiMotorCmd(const uint8_t *sub_cmds, size_t sub_cmds_len,
                              zdt_can_msg_t *msg);
 
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildMultiMotorCmd(const uint8_t *sub_cmds, size_t sub_cmds_len,
+                          uint8_t *buf, size_t buf_size);
+
 /**
  * @brief 5.3.2 电机使能控制
  * 原始命令: Addr + F3 + AB + enable + sync + 6B (6 字节 -> 1 帧 CAN)
@@ -123,6 +142,10 @@ int zdtCanBuildMultiMotorCmd(const uint8_t *sub_cmds, size_t sub_cmds_len,
 int zdtCanBuildMotorEnableCmd(uint8_t addr, uint8_t enable, uint8_t sync,
                              zdt_can_msg_t *msg);
 
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildMotorEnableCmd(uint8_t addr, uint8_t enable, uint8_t sync,
+                           uint8_t *buf, size_t buf_size);
+
 /**
  * @brief 5.3.13 立即停止
  * 原始命令: Addr + FE + 98 + sync + 6B (5 字节 -> 1 帧 CAN)
@@ -135,6 +158,10 @@ int zdtCanBuildMotorEnableCmd(uint8_t addr, uint8_t enable, uint8_t sync,
 int zdtCanBuildImmediateStopCmd(uint8_t addr, uint8_t sync,
                                zdt_can_msg_t *msg);
 
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildImmediateStopCmd(uint8_t addr, uint8_t sync,
+                             uint8_t *buf, size_t buf_size);
+
 /**
  * @brief 5.3.14 触发多机同步运动 (通常广播)
  * 原始命令: Addr + FF + 66 + 6B (4 字节 -> 1 帧 CAN)
@@ -144,6 +171,9 @@ int zdtCanBuildImmediateStopCmd(uint8_t addr, uint8_t sync,
  * @return 成功返回生成的 CAN 帧数 (>=1)，失败返回负数错误码
  */
 int zdtCanBuildSyncMotionCmd(uint8_t addr, zdt_can_msg_t *msg);
+
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildSyncMotionCmd(uint8_t addr, uint8_t *buf, size_t buf_size);
 
 /* ====================================================================
  *  5.4 原点回零命令 (6条)
@@ -161,6 +191,10 @@ int zdtCanBuildSyncMotionCmd(uint8_t addr, zdt_can_msg_t *msg);
 int zdtCanBuildSetSingleTurnZeroCmd(uint8_t addr, uint8_t store,
                                    zdt_can_msg_t *msg);
 
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildSetSingleTurnZeroCmd(uint8_t addr, uint8_t store,
+                                 uint8_t *buf, size_t buf_size);
+
 /**
  * @brief 5.4.2 触发回零
  * 原始命令: Addr + 9A + homing_mode + sync + 6B (5 字节 -> 1 帧 CAN)
@@ -174,6 +208,10 @@ int zdtCanBuildSetSingleTurnZeroCmd(uint8_t addr, uint8_t store,
 int zdtCanBuildTriggerHomingCmd(uint8_t addr, uint8_t homing_mode,
                                uint8_t sync, zdt_can_msg_t *msg);
 
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildTriggerHomingCmd(uint8_t addr, uint8_t homing_mode,
+                             uint8_t sync, uint8_t *buf, size_t buf_size);
+
 /**
  * @brief 5.4.3 强制中断并退出回零
  * 原始命令: Addr + 9C + 48 + 6B (4 字节 -> 1 帧 CAN)
@@ -183,6 +221,9 @@ int zdtCanBuildTriggerHomingCmd(uint8_t addr, uint8_t homing_mode,
  * @return 成功返回生成的 CAN 帧数 (>=1)，失败返回负数错误码
  */
 int zdtCanBuildAbortHomingCmd(uint8_t addr, zdt_can_msg_t *msg);
+
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildAbortHomingCmd(uint8_t addr, uint8_t *buf, size_t buf_size);
 
 /**
  * @brief 5.4.4 读取回零状态标志
@@ -194,6 +235,9 @@ int zdtCanBuildAbortHomingCmd(uint8_t addr, zdt_can_msg_t *msg);
  */
 int zdtCanBuildReadHomingStatusCmd(uint8_t addr, zdt_can_msg_t *msg);
 
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildReadHomingStatusCmd(uint8_t addr, uint8_t *buf, size_t buf_size);
+
 /**
  * @brief 5.4.5 读取回零参数
  * 原始命令: Addr + 22 + 6B (3 字节 -> 1 帧 CAN)
@@ -203,6 +247,9 @@ int zdtCanBuildReadHomingStatusCmd(uint8_t addr, zdt_can_msg_t *msg);
  * @return 成功返回生成的 CAN 帧数 (>=1)，失败返回负数错误码
  */
 int zdtCanBuildReadHomingParamsCmd(uint8_t addr, zdt_can_msg_t *msg);
+
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildReadHomingParamsCmd(uint8_t addr, uint8_t *buf, size_t buf_size);
 
 /**
  * @brief 5.4.6 修改回零参数
@@ -230,6 +277,16 @@ int zdtCanBuildWriteHomingParamsCmd(uint8_t addr, uint8_t store,
                                    uint16_t bump_time_ms,
                                    uint8_t auto_trigger,
                                    zdt_can_msg_t *msg);
+
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildWriteHomingParamsCmd(uint8_t addr, uint8_t store,
+                                 uint8_t homing_mode, uint8_t dir,
+                                 uint16_t rpm, uint32_t timeout_ms,
+                                 uint16_t bump_speed_rpm,
+                                 uint16_t bump_current_ma,
+                                 uint16_t bump_time_ms,
+                                 uint8_t auto_trigger,
+                                 uint8_t *buf, size_t buf_size);
 
 #ifdef __cplusplus
 }

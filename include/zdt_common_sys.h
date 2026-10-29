@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 /*
- * zdt_common_sys.h - 通用读取系统参数模块 (CAN 扩展帧构建)
+ * zdt_common_sys.h - 通用读取系统参数模块 (串口 TTL 原始帧 / CAN 扩展帧构建)
  *
  * CAN 分帧说明：下列“原始命令”包含 Addr，供与手册逐字节对照；CAN 将
  * Addr 编入 EID=(Addr<<8)|Packet（Packet 从 0 开始）。CAN data 从 Code
@@ -58,6 +58,11 @@ int zdtCanBuildSetPeriodicReportCmd(uint8_t addr, uint8_t info_func_code,
                                    uint16_t interval_ms,
                                    zdt_can_msg_t *msg);
 
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildSetPeriodicReportCmd(uint8_t addr, uint8_t info_func_code,
+                                 uint16_t interval_ms,
+                                 uint8_t *buf, size_t buf_size);
+
 /**
  * @brief 5.5.2 读取固件版本和硬件版本
  * 原始命令: Addr + 1F + 6B (3 字节 -> 1 帧 CAN)
@@ -67,6 +72,9 @@ int zdtCanBuildSetPeriodicReportCmd(uint8_t addr, uint8_t info_func_code,
  * @return 成功返回生成的 CAN 帧数 (>=1)，失败返回负数错误码
  */
 int zdtCanBuildReadVersionCmd(uint8_t addr, zdt_can_msg_t *msg);
+
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildReadVersionCmd(uint8_t addr, uint8_t *buf, size_t buf_size);
 
 /**
  * @brief 5.5.3 读取相电阻和相电感
@@ -78,6 +86,9 @@ int zdtCanBuildReadVersionCmd(uint8_t addr, zdt_can_msg_t *msg);
  */
 int zdtCanBuildReadPhaseRLCmd(uint8_t addr, zdt_can_msg_t *msg);
 
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildReadPhaseRLCmd(uint8_t addr, uint8_t *buf, size_t buf_size);
+
 /**
  * @brief 5.5.4 读取总线电压
  * 原始命令: Addr + 24 + 6B (3 字节 -> 1 帧 CAN)
@@ -87,6 +98,9 @@ int zdtCanBuildReadPhaseRLCmd(uint8_t addr, zdt_can_msg_t *msg);
  * @return 成功返回生成的 CAN 帧数 (>=1)，失败返回负数错误码
  */
 int zdtCanBuildReadBusVoltageCmd(uint8_t addr, zdt_can_msg_t *msg);
+
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildReadBusVoltageCmd(uint8_t addr, uint8_t *buf, size_t buf_size);
 
 /**
  * @brief 5.5.5 读取总线电流 (X42S/Y42)
@@ -98,6 +112,9 @@ int zdtCanBuildReadBusVoltageCmd(uint8_t addr, zdt_can_msg_t *msg);
  */
 int zdtCanBuildReadBusCurrentCmd(uint8_t addr, zdt_can_msg_t *msg);
 
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildReadBusCurrentCmd(uint8_t addr, uint8_t *buf, size_t buf_size);
+
 /**
  * @brief 5.5.6 读取相电流
  * 原始命令: Addr + 27 + 6B (3 字节 -> 1 帧 CAN)
@@ -107,6 +124,9 @@ int zdtCanBuildReadBusCurrentCmd(uint8_t addr, zdt_can_msg_t *msg);
  * @return 成功返回生成的 CAN 帧数 (>=1)，失败返回负数错误码
  */
 int zdtCanBuildReadPhaseCurrentCmd(uint8_t addr, zdt_can_msg_t *msg);
+
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildReadPhaseCurrentCmd(uint8_t addr, uint8_t *buf, size_t buf_size);
 
 /**
  * @brief 5.5.7 读取经过线性化校准后的编码器值
@@ -118,6 +138,9 @@ int zdtCanBuildReadPhaseCurrentCmd(uint8_t addr, zdt_can_msg_t *msg);
  */
 int zdtCanBuildReadEncoderCalibratedCmd(uint8_t addr, zdt_can_msg_t *msg);
 
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildReadEncoderCalibratedCmd(uint8_t addr, uint8_t *buf, size_t buf_size);
+
 /**
  * @brief 5.5.8 读取输入脉冲数
  * 原始命令: Addr + 32 + 6B (3 字节 -> 1 帧 CAN)
@@ -127,6 +150,9 @@ int zdtCanBuildReadEncoderCalibratedCmd(uint8_t addr, zdt_can_msg_t *msg);
  * @return 成功返回生成的 CAN 帧数 (>=1)，失败返回负数错误码
  */
 int zdtCanBuildReadInputPulsesCmd(uint8_t addr, zdt_can_msg_t *msg);
+
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildReadInputPulsesCmd(uint8_t addr, uint8_t *buf, size_t buf_size);
 
 /**
  * @brief 5.5.9 读取电机目标位置
@@ -138,6 +164,9 @@ int zdtCanBuildReadInputPulsesCmd(uint8_t addr, zdt_can_msg_t *msg);
  */
 int zdtCanBuildReadTargetPosCmd(uint8_t addr, zdt_can_msg_t *msg);
 
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildReadTargetPosCmd(uint8_t addr, uint8_t *buf, size_t buf_size);
+
 /**
  * @brief 5.5.10 读取电机实时设定的目标位置
  * 原始命令: Addr + 34 + 6B (3 字节 -> 1 帧 CAN)
@@ -147,6 +176,9 @@ int zdtCanBuildReadTargetPosCmd(uint8_t addr, zdt_can_msg_t *msg);
  * @return 成功返回生成的 CAN 帧数 (>=1)，失败返回负数错误码
  */
 int zdtCanBuildReadRealtimeTargetPosCmd(uint8_t addr, zdt_can_msg_t *msg);
+
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildReadRealtimeTargetPosCmd(uint8_t addr, uint8_t *buf, size_t buf_size);
 
 /**
  * @brief 5.5.11 读取电机实时转速
@@ -158,6 +190,9 @@ int zdtCanBuildReadRealtimeTargetPosCmd(uint8_t addr, zdt_can_msg_t *msg);
  */
 int zdtCanBuildReadRealtimeSpeedCmd(uint8_t addr, zdt_can_msg_t *msg);
 
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildReadRealtimeSpeedCmd(uint8_t addr, uint8_t *buf, size_t buf_size);
+
 /**
  * @brief 5.5.12 读取驱动温度 (X42S/Y42)
  * 原始命令: Addr + 39 + 6B (3 字节 -> 1 帧 CAN)
@@ -167,6 +202,9 @@ int zdtCanBuildReadRealtimeSpeedCmd(uint8_t addr, zdt_can_msg_t *msg);
  * @return 成功返回生成的 CAN 帧数 (>=1)，失败返回负数错误码
  */
 int zdtCanBuildReadDriverTempCmd(uint8_t addr, zdt_can_msg_t *msg);
+
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildReadDriverTempCmd(uint8_t addr, uint8_t *buf, size_t buf_size);
 
 /**
  * @brief 5.5.13 读取电机实时位置
@@ -178,6 +216,9 @@ int zdtCanBuildReadDriverTempCmd(uint8_t addr, zdt_can_msg_t *msg);
  */
 int zdtCanBuildReadRealtimePosCmd(uint8_t addr, zdt_can_msg_t *msg);
 
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildReadRealtimePosCmd(uint8_t addr, uint8_t *buf, size_t buf_size);
+
 /**
  * @brief 5.5.14 读取电机位置误差
  * 原始命令: Addr + 37 + 6B (3 字节 -> 1 帧 CAN)
@@ -187,6 +228,9 @@ int zdtCanBuildReadRealtimePosCmd(uint8_t addr, zdt_can_msg_t *msg);
  * @return 成功返回生成的 CAN 帧数 (>=1)，失败返回负数错误码
  */
 int zdtCanBuildReadPosErrorCmd(uint8_t addr, zdt_can_msg_t *msg);
+
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildReadPosErrorCmd(uint8_t addr, uint8_t *buf, size_t buf_size);
 
 /**
  * @brief 5.5.15 读取电机状态标志
@@ -198,6 +242,9 @@ int zdtCanBuildReadPosErrorCmd(uint8_t addr, zdt_can_msg_t *msg);
  */
 int zdtCanBuildReadMotorStatusCmd(uint8_t addr, zdt_can_msg_t *msg);
 
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildReadMotorStatusCmd(uint8_t addr, uint8_t *buf, size_t buf_size);
+
 /**
  * @brief 5.5.16 读取回零状态标志 + 电机状态标志 (X42S/Y42)
  * 原始命令: Addr + 3C + 6B (3 字节 -> 1 帧 CAN)
@@ -207,6 +254,9 @@ int zdtCanBuildReadMotorStatusCmd(uint8_t addr, zdt_can_msg_t *msg);
  * @return 成功返回生成的 CAN 帧数 (>=1)，失败返回负数错误码
  */
 int zdtCanBuildReadHomingAndStatusCmd(uint8_t addr, zdt_can_msg_t *msg);
+
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildReadHomingAndStatusCmd(uint8_t addr, uint8_t *buf, size_t buf_size);
 
 /**
  * @brief 5.5.17 读取引脚 IO 电平状态 (X42S/Y42)
@@ -218,6 +268,9 @@ int zdtCanBuildReadHomingAndStatusCmd(uint8_t addr, zdt_can_msg_t *msg);
  */
 int zdtCanBuildReadIoLevelCmd(uint8_t addr, zdt_can_msg_t *msg);
 
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildReadIoLevelCmd(uint8_t addr, uint8_t *buf, size_t buf_size);
+
 /**
  * @brief 5.5.18 读取电池电压 (Y42)
  * 原始命令: Addr + 38 + 6B (3 字节 -> 1 帧 CAN)
@@ -227,6 +280,9 @@ int zdtCanBuildReadIoLevelCmd(uint8_t addr, zdt_can_msg_t *msg);
  * @return 成功返回生成的 CAN 帧数 (>=1)，失败返回负数错误码
  */
 int zdtCanBuildReadBatteryVoltageCmd(uint8_t addr, zdt_can_msg_t *msg);
+
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildReadBatteryVoltageCmd(uint8_t addr, uint8_t *buf, size_t buf_size);
 
 #ifdef __cplusplus
 }

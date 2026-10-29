@@ -1,14 +1,14 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 /*
- * zdt_common_param.c - 通用读写驱动参数模块实现 (CAN 扩展帧构建)
+ * zdt_common_param.c - 通用读写驱动参数模块实现 (串口 TTL 原始帧 / CAN 扩展帧构建)
  */
 
 #include "zdt_common_param.h"
 #include "zdt_internal.h"
 
 /* 5.6.1 修改电机 ID/地址  Addr + AE + 4B + store + new_addr + 6B  — 6B */
-static int _raw_change_addr(uint8_t addr, uint8_t store, uint8_t new_addr,
-                            uint8_t *buf, size_t max_len)
+int zdtBuildChangeAddrCmd(uint8_t addr, uint8_t store, uint8_t new_addr,
+                          uint8_t *buf, size_t max_len)
 {
     const size_t need = 6;
     size_t i = 0;
@@ -27,14 +27,14 @@ int zdtCanBuildChangeAddrCmd(uint8_t addr, uint8_t store,
                             zdt_can_msg_t *msg)
 {
     uint8_t raw[16];
-    int len = _raw_change_addr(addr, store, new_addr, raw, sizeof(raw));
+    int len = zdtBuildChangeAddrCmd(addr, store, new_addr, raw, sizeof(raw));
     if (len < 0) return len;
     return zdt_pack_can_msg(addr, raw, (size_t)len, msg);
 }
 
 /* 5.6.2 修改细分值  Addr + 84 + 8A + store + microstep + 6B  — 6B */
-static int _raw_change_microstep(uint8_t addr, uint8_t store, uint8_t microstep,
-                                uint8_t *buf, size_t max_len)
+int zdtBuildChangeMicrostepCmd(uint8_t addr, uint8_t store, uint8_t microstep,
+                               uint8_t *buf, size_t max_len)
 {
     const size_t need = 6;
     size_t i = 0;
@@ -53,14 +53,14 @@ int zdtCanBuildChangeMicrostepCmd(uint8_t addr, uint8_t store,
                                  zdt_can_msg_t *msg)
 {
     uint8_t raw[16];
-    int len = _raw_change_microstep(addr, store, microstep, raw, sizeof(raw));
+    int len = zdtBuildChangeMicrostepCmd(addr, store, microstep, raw, sizeof(raw));
     if (len < 0) return len;
     return zdt_pack_can_msg(addr, raw, (size_t)len, msg);
 }
 
 /* 5.6.3 修改掉电标志  Addr + 50 + flag + 6B  — 4B */
-static int _raw_change_power_down_flag(uint8_t addr, uint8_t flag,
-                                      uint8_t *buf, size_t max_len)
+int zdtBuildChangePowerDownFlagCmd(uint8_t addr, uint8_t flag,
+                                   uint8_t *buf, size_t max_len)
 {
     const size_t need = 4;
     size_t i = 0;
@@ -76,13 +76,13 @@ int zdtCanBuildChangePowerDownFlagCmd(uint8_t addr, uint8_t flag,
                                      zdt_can_msg_t *msg)
 {
     uint8_t raw[16];
-    int len = _raw_change_power_down_flag(addr, flag, raw, sizeof(raw));
+    int len = zdtBuildChangePowerDownFlagCmd(addr, flag, raw, sizeof(raw));
     if (len < 0) return len;
     return zdt_pack_can_msg(addr, raw, (size_t)len, msg);
 }
 
 /* 5.6.4 读取选项参数状态 (X42S/Y42)  Addr + 1A + 6B  — 3B */
-static int _raw_read_options(uint8_t addr, uint8_t *buf, size_t max_len)
+int zdtBuildReadOptionsCmd(uint8_t addr, uint8_t *buf, size_t max_len)
 {
     const size_t need = 3;
     size_t i = 0;
@@ -96,14 +96,14 @@ static int _raw_read_options(uint8_t addr, uint8_t *buf, size_t max_len)
 int zdtCanBuildReadOptionsCmd(uint8_t addr, zdt_can_msg_t *msg)
 {
     uint8_t raw[16];
-    int len = _raw_read_options(addr, raw, sizeof(raw));
+    int len = zdtBuildReadOptionsCmd(addr, raw, sizeof(raw));
     if (len < 0) return len;
     return zdt_pack_can_msg(addr, raw, (size_t)len, msg);
 }
 
 /* 5.6.5 修改电机类型  Addr + D7 + 35 + store + motor_type + 6B  — 6B */
-static int _raw_change_motor_type(uint8_t addr, uint8_t store, uint8_t motor_type,
-                                 uint8_t *buf, size_t max_len)
+int zdtBuildChangeMotorTypeCmd(uint8_t addr, uint8_t store, uint8_t motor_type,
+                               uint8_t *buf, size_t max_len)
 {
     const size_t need = 6;
     size_t i = 0;
@@ -122,14 +122,14 @@ int zdtCanBuildChangeMotorTypeCmd(uint8_t addr, uint8_t store,
                                  zdt_can_msg_t *msg)
 {
     uint8_t raw[16];
-    int len = _raw_change_motor_type(addr, store, motor_type, raw, sizeof(raw));
+    int len = zdtBuildChangeMotorTypeCmd(addr, store, motor_type, raw, sizeof(raw));
     if (len < 0) return len;
     return zdt_pack_can_msg(addr, raw, (size_t)len, msg);
 }
 
 /* 5.6.6 修改固件类型  Addr + D5 + 69 + store + fw_type + 6B  — 6B */
-static int _raw_change_firmware_type(uint8_t addr, uint8_t store, uint8_t fw_type,
-                                    uint8_t *buf, size_t max_len)
+int zdtBuildChangeFirmwareTypeCmd(uint8_t addr, uint8_t store, uint8_t fw_type,
+                                  uint8_t *buf, size_t max_len)
 {
     const size_t need = 6;
     size_t i = 0;
@@ -148,14 +148,14 @@ int zdtCanBuildChangeFirmwareTypeCmd(uint8_t addr, uint8_t store,
                                     zdt_can_msg_t *msg)
 {
     uint8_t raw[16];
-    int len = _raw_change_firmware_type(addr, store, fw_type, raw, sizeof(raw));
+    int len = zdtBuildChangeFirmwareTypeCmd(addr, store, fw_type, raw, sizeof(raw));
     if (len < 0) return len;
     return zdt_pack_can_msg(addr, raw, (size_t)len, msg);
 }
 
 /* 5.6.7 修改开环/闭环控制模式  Addr + 46 + A6 + store + mode + 6B  — 6B */
-static int _raw_change_ctrl_mode(uint8_t addr, uint8_t store, uint8_t mode,
-                                uint8_t *buf, size_t max_len)
+int zdtBuildChangeCtrlModeCmd(uint8_t addr, uint8_t store, uint8_t mode,
+                              uint8_t *buf, size_t max_len)
 {
     const size_t need = 6;
     size_t i = 0;
@@ -174,14 +174,14 @@ int zdtCanBuildChangeCtrlModeCmd(uint8_t addr, uint8_t store,
                                 zdt_can_msg_t *msg)
 {
     uint8_t raw[16];
-    int len = _raw_change_ctrl_mode(addr, store, mode, raw, sizeof(raw));
+    int len = zdtBuildChangeCtrlModeCmd(addr, store, mode, raw, sizeof(raw));
     if (len < 0) return len;
     return zdt_pack_can_msg(addr, raw, (size_t)len, msg);
 }
 
 /* 5.6.8 修改电机运动正方向  Addr + D4 + 60 + store + dir + 6B  — 6B */
-static int _raw_change_motor_dir(uint8_t addr, uint8_t store, uint8_t dir,
-                                uint8_t *buf, size_t max_len)
+int zdtBuildChangeMotorDirCmd(uint8_t addr, uint8_t store, uint8_t dir,
+                              uint8_t *buf, size_t max_len)
 {
     const size_t need = 6;
     size_t i = 0;
@@ -200,14 +200,14 @@ int zdtCanBuildChangeMotorDirCmd(uint8_t addr, uint8_t store,
                                 zdt_can_msg_t *msg)
 {
     uint8_t raw[16];
-    int len = _raw_change_motor_dir(addr, store, dir, raw, sizeof(raw));
+    int len = zdtBuildChangeMotorDirCmd(addr, store, dir, raw, sizeof(raw));
     if (len < 0) return len;
     return zdt_pack_can_msg(addr, raw, (size_t)len, msg);
 }
 
 /* 5.6.9 修改锁定按键功能  Addr + D0 + B3 + store + lock + 6B  — 6B */
-static int _raw_change_key_lock(uint8_t addr, uint8_t store, uint8_t lock,
-                               uint8_t *buf, size_t max_len)
+int zdtBuildChangeKeyLockCmd(uint8_t addr, uint8_t store, uint8_t lock,
+                             uint8_t *buf, size_t max_len)
 {
     const size_t need = 6;
     size_t i = 0;
@@ -226,14 +226,14 @@ int zdtCanBuildChangeKeyLockCmd(uint8_t addr, uint8_t store,
                                zdt_can_msg_t *msg)
 {
     uint8_t raw[16];
-    int len = _raw_change_key_lock(addr, store, lock, raw, sizeof(raw));
+    int len = zdtBuildChangeKeyLockCmd(addr, store, lock, raw, sizeof(raw));
     if (len < 0) return len;
     return zdt_pack_can_msg(addr, raw, (size_t)len, msg);
 }
 
 /* 5.6.12 修改开环模式工作电流  Addr + 44 + 33 + store + current(BE16) + 6B  — 7B */
-static int _raw_change_open_loop_current(uint8_t addr, uint8_t store, uint16_t current_ma,
-                                        uint8_t *buf, size_t max_len)
+int zdtBuildChangeOpenLoopCurrentCmd(uint8_t addr, uint8_t store, uint16_t current_ma,
+                                     uint8_t *buf, size_t max_len)
 {
     const size_t need = 7;
     size_t i = 0;
@@ -252,14 +252,14 @@ int zdtCanBuildChangeOpenLoopCurrentCmd(uint8_t addr, uint8_t store,
                                        zdt_can_msg_t *msg)
 {
     uint8_t raw[16];
-    int len = _raw_change_open_loop_current(addr, store, current_ma, raw, sizeof(raw));
+    int len = zdtBuildChangeOpenLoopCurrentCmd(addr, store, current_ma, raw, sizeof(raw));
     if (len < 0) return len;
     return zdt_pack_can_msg(addr, raw, (size_t)len, msg);
 }
 
 /* 5.6.13 修改闭环模式最大电流  Addr + 45 + 66 + store + current(BE16) + 6B  — 7B */
-static int _raw_change_closed_loop_current(uint8_t addr, uint8_t store, uint16_t current_ma,
-                                          uint8_t *buf, size_t max_len)
+int zdtBuildChangeClosedLoopCurrentCmd(uint8_t addr, uint8_t store, uint16_t current_ma,
+                                       uint8_t *buf, size_t max_len)
 {
     const size_t need = 7;
     size_t i = 0;
@@ -278,13 +278,13 @@ int zdtCanBuildChangeClosedLoopCurrentCmd(uint8_t addr, uint8_t store,
                                          zdt_can_msg_t *msg)
 {
     uint8_t raw[16];
-    int len = _raw_change_closed_loop_current(addr, store, current_ma, raw, sizeof(raw));
+    int len = zdtBuildChangeClosedLoopCurrentCmd(addr, store, current_ma, raw, sizeof(raw));
     if (len < 0) return len;
     return zdt_pack_can_msg(addr, raw, (size_t)len, msg);
 }
 
 /* 5.6.18 读取 DMX512 协议参数 (X42S/Y42)  Addr + 49 + 78 + 6B  — 4B */
-static int _raw_read_dmx512(uint8_t addr, uint8_t *buf, size_t max_len)
+int zdtBuildReadDmx512Cmd(uint8_t addr, uint8_t *buf, size_t max_len)
 {
     const size_t need = 4;
     size_t i = 0;
@@ -299,21 +299,21 @@ static int _raw_read_dmx512(uint8_t addr, uint8_t *buf, size_t max_len)
 int zdtCanBuildReadDmx512Cmd(uint8_t addr, zdt_can_msg_t *msg)
 {
     uint8_t raw[16];
-    int len = _raw_read_dmx512(addr, raw, sizeof(raw));
+    int len = zdtBuildReadDmx512Cmd(addr, raw, sizeof(raw));
     if (len < 0) return len;
     return zdt_pack_can_msg(addr, raw, (size_t)len, msg);
 }
 
 /* 5.6.19 修改 DMX512 协议参数 (X42S/Y42)  — 19B */
-static int _raw_write_dmx512(uint8_t addr, uint8_t store,
-                            uint16_t total_channels,
-                            uint8_t channels_per_motor,
-                            uint8_t move_mode,
-                            uint16_t single_speed_rpm,
-                            uint16_t accel,
-                            uint16_t speed_step,
-                            uint32_t motion_step,
-                            uint8_t *buf, size_t max_len)
+int zdtBuildWriteDmx512Cmd(uint8_t addr, uint8_t store,
+                           uint16_t total_channels,
+                           uint8_t channels_per_motor,
+                           uint8_t move_mode,
+                           uint16_t single_speed_rpm,
+                           uint16_t accel,
+                           uint16_t speed_step,
+                           uint32_t motion_step,
+                           uint8_t *buf, size_t max_len)
 {
     const size_t need = 19;
     size_t i = 0;
@@ -344,7 +344,7 @@ int zdtCanBuildWriteDmx512Cmd(uint8_t addr, uint8_t store,
                              zdt_can_msg_t *msg)
 {
     uint8_t raw[32];
-    int len = _raw_write_dmx512(addr, store, total_channels, channels_per_motor,
+    int len = zdtBuildWriteDmx512Cmd(addr, store, total_channels, channels_per_motor,
                                move_mode, single_speed_rpm, accel, speed_step,
                                motion_step, raw, sizeof(raw));
     if (len < 0) return len;
@@ -352,7 +352,7 @@ int zdtCanBuildWriteDmx512Cmd(uint8_t addr, uint8_t store,
 }
 
 /* 5.6.20 读取位置到达窗口 (X42S/Y42)  Addr + 41 + 6B  — 3B */
-static int _raw_read_pos_window(uint8_t addr, uint8_t *buf, size_t max_len)
+int zdtBuildReadPosWindowCmd(uint8_t addr, uint8_t *buf, size_t max_len)
 {
     const size_t need = 3;
     size_t i = 0;
@@ -366,39 +366,41 @@ static int _raw_read_pos_window(uint8_t addr, uint8_t *buf, size_t max_len)
 int zdtCanBuildReadPosWindowCmd(uint8_t addr, zdt_can_msg_t *msg)
 {
     uint8_t raw[16];
-    int len = _raw_read_pos_window(addr, raw, sizeof(raw));
+    int len = zdtBuildReadPosWindowCmd(addr, raw, sizeof(raw));
     if (len < 0) return len;
     return zdt_pack_can_msg(addr, raw, (size_t)len, msg);
 }
 
-/* 5.6.21 修改位置到达窗口 (X42S/Y42)  Addr + D1 + 07 + store + window(BE16, ×0.1°) + 6B  — 7B */
-static int _raw_write_pos_window(uint8_t addr, uint8_t store, uint16_t window_x10,
-                                uint8_t *buf, size_t max_len)
+/* 5.6.21 修改位置到达窗口 (X42S/Y42)  Addr + D1 + 07 + store + window(u8, ×0.1°) + 6B  — 6B
+ * 真机验证（X42S Emm，2026-10-29）：窗口值是单字节；按手册写成 BE16 的 7 字节帧电机回 00 EE。
+ * 读取命令 5.6.20 的应答仍是 2 字节。 */
+int zdtBuildWritePosWindowCmd(uint8_t addr, uint8_t store, uint8_t window_x10,
+                              uint8_t *buf, size_t max_len)
 {
-    const size_t need = 7;
+    const size_t need = 6;
     size_t i = 0;
     if (zdt_check_size(0, need, max_len) != ZDT_OK) return ZDT_ERR_BUF_TOO_SMALL;
     zdt_append_u8(buf, &i, max_len, addr);
     zdt_append_u8(buf, &i, max_len, 0xD1);
     zdt_append_u8(buf, &i, max_len, 0x07);
     zdt_append_u8(buf, &i, max_len, store);
-    zdt_append_u16_be(buf, &i, max_len, window_x10);
+    zdt_append_u8(buf, &i, max_len, window_x10);
     zdt_append_u8(buf, &i, max_len, ZDT_CHECKSUM_DEFAULT);
     return (int)i;
 }
 
 int zdtCanBuildWritePosWindowCmd(uint8_t addr, uint8_t store,
-                                uint16_t window_x10,
+                                uint8_t window_x10,
                                 zdt_can_msg_t *msg)
 {
     uint8_t raw[16];
-    int len = _raw_write_pos_window(addr, store, window_x10, raw, sizeof(raw));
+    int len = zdtBuildWritePosWindowCmd(addr, store, window_x10, raw, sizeof(raw));
     if (len < 0) return len;
     return zdt_pack_can_msg(addr, raw, (size_t)len, msg);
 }
 
 /* 5.6.22 读取过热过流保护检测阈值 (X42S/Y42)  Addr + 13 + 6B  — 3B */
-static int _raw_read_protect_threshold(uint8_t addr, uint8_t *buf, size_t max_len)
+int zdtBuildReadProtectThresholdCmd(uint8_t addr, uint8_t *buf, size_t max_len)
 {
     const size_t need = 3;
     size_t i = 0;
@@ -412,17 +414,17 @@ static int _raw_read_protect_threshold(uint8_t addr, uint8_t *buf, size_t max_le
 int zdtCanBuildReadProtectThresholdCmd(uint8_t addr, zdt_can_msg_t *msg)
 {
     uint8_t raw[16];
-    int len = _raw_read_protect_threshold(addr, raw, sizeof(raw));
+    int len = zdtBuildReadProtectThresholdCmd(addr, raw, sizeof(raw));
     if (len < 0) return len;
     return zdt_pack_can_msg(addr, raw, (size_t)len, msg);
 }
 
 /* 5.6.23 修改过热过流保护检测阈值 (X42S/Y42)  — 11B */
-static int _raw_write_protect_threshold(uint8_t addr, uint8_t store,
-                                       uint16_t overheat_c,
-                                       uint16_t overcurrent_ma,
-                                       uint16_t detect_ms,
-                                       uint8_t *buf, size_t max_len)
+int zdtBuildWriteProtectThresholdCmd(uint8_t addr, uint8_t store,
+                                     uint16_t overheat_c,
+                                     uint16_t overcurrent_ma,
+                                     uint16_t detect_ms,
+                                     uint8_t *buf, size_t max_len)
 {
     const size_t need = 11;
     size_t i = 0;
@@ -445,14 +447,14 @@ int zdtCanBuildWriteProtectThresholdCmd(uint8_t addr, uint8_t store,
                                        zdt_can_msg_t *msg)
 {
     uint8_t raw[16];
-    int len = _raw_write_protect_threshold(addr, store, overheat_c, overcurrent_ma,
+    int len = zdtBuildWriteProtectThresholdCmd(addr, store, overheat_c, overcurrent_ma,
                                           detect_ms, raw, sizeof(raw));
     if (len < 0) return len;
     return zdt_pack_can_msg(addr, raw, (size_t)len, msg);
 }
 
 /* 5.6.24 读取心跳保护功能时间 (X42S/Y42)  Addr + 16 + 6B  — 3B */
-static int _raw_read_heartbeat(uint8_t addr, uint8_t *buf, size_t max_len)
+int zdtBuildReadHeartbeatCmd(uint8_t addr, uint8_t *buf, size_t max_len)
 {
     const size_t need = 3;
     size_t i = 0;
@@ -466,14 +468,14 @@ static int _raw_read_heartbeat(uint8_t addr, uint8_t *buf, size_t max_len)
 int zdtCanBuildReadHeartbeatCmd(uint8_t addr, zdt_can_msg_t *msg)
 {
     uint8_t raw[16];
-    int len = _raw_read_heartbeat(addr, raw, sizeof(raw));
+    int len = zdtBuildReadHeartbeatCmd(addr, raw, sizeof(raw));
     if (len < 0) return len;
     return zdt_pack_can_msg(addr, raw, (size_t)len, msg);
 }
 
 /* 5.6.25 修改心跳保护功能时间 (X42S/Y42)  Addr + 68 + 38 + store + heartbeat_ms(BE32) + 6B  — 9B */
-static int _raw_write_heartbeat(uint8_t addr, uint8_t store, uint32_t heartbeat_ms,
-                               uint8_t *buf, size_t max_len)
+int zdtBuildWriteHeartbeatCmd(uint8_t addr, uint8_t store, uint32_t heartbeat_ms,
+                              uint8_t *buf, size_t max_len)
 {
     const size_t need = 9;
     size_t i = 0;
@@ -492,13 +494,13 @@ int zdtCanBuildWriteHeartbeatCmd(uint8_t addr, uint8_t store,
                                 zdt_can_msg_t *msg)
 {
     uint8_t raw[16];
-    int len = _raw_write_heartbeat(addr, store, heartbeat_ms, raw, sizeof(raw));
+    int len = zdtBuildWriteHeartbeatCmd(addr, store, heartbeat_ms, raw, sizeof(raw));
     if (len < 0) return len;
     return zdt_pack_can_msg(addr, raw, (size_t)len, msg);
 }
 
 /* 5.6.26 读取积分限幅/刚性系数 (X42S/Y42)  Addr + 23 + 6B  — 3B */
-static int _raw_read_integral_limit(uint8_t addr, uint8_t *buf, size_t max_len)
+int zdtBuildReadIntegralLimitCmd(uint8_t addr, uint8_t *buf, size_t max_len)
 {
     const size_t need = 3;
     size_t i = 0;
@@ -512,14 +514,14 @@ static int _raw_read_integral_limit(uint8_t addr, uint8_t *buf, size_t max_len)
 int zdtCanBuildReadIntegralLimitCmd(uint8_t addr, zdt_can_msg_t *msg)
 {
     uint8_t raw[16];
-    int len = _raw_read_integral_limit(addr, raw, sizeof(raw));
+    int len = zdtBuildReadIntegralLimitCmd(addr, raw, sizeof(raw));
     if (len < 0) return len;
     return zdt_pack_can_msg(addr, raw, (size_t)len, msg);
 }
 
 /* 5.6.27 修改积分限幅/刚性系数 (X42S/Y42)  Addr + 4B + 57 + store + value(BE32) + 6B  — 9B */
-static int _raw_write_integral_limit(uint8_t addr, uint8_t store, uint32_t value,
-                                    uint8_t *buf, size_t max_len)
+int zdtBuildWriteIntegralLimitCmd(uint8_t addr, uint8_t store, uint32_t value,
+                                  uint8_t *buf, size_t max_len)
 {
     const size_t need = 9;
     size_t i = 0;
@@ -538,13 +540,13 @@ int zdtCanBuildWriteIntegralLimitCmd(uint8_t addr, uint8_t store,
                                     zdt_can_msg_t *msg)
 {
     uint8_t raw[16];
-    int len = _raw_write_integral_limit(addr, store, value, raw, sizeof(raw));
+    int len = zdtBuildWriteIntegralLimitCmd(addr, store, value, raw, sizeof(raw));
     if (len < 0) return len;
     return zdt_pack_can_msg(addr, raw, (size_t)len, msg);
 }
 
 /* 5.6.28 读取碰撞回零返回角度 (X42S/Y42)  Addr + 3F + 6B  — 3B */
-static int _raw_read_bump_return_angle(uint8_t addr, uint8_t *buf, size_t max_len)
+int zdtBuildReadBumpReturnAngleCmd(uint8_t addr, uint8_t *buf, size_t max_len)
 {
     const size_t need = 3;
     size_t i = 0;
@@ -558,14 +560,14 @@ static int _raw_read_bump_return_angle(uint8_t addr, uint8_t *buf, size_t max_le
 int zdtCanBuildReadBumpReturnAngleCmd(uint8_t addr, zdt_can_msg_t *msg)
 {
     uint8_t raw[16];
-    int len = _raw_read_bump_return_angle(addr, raw, sizeof(raw));
+    int len = zdtBuildReadBumpReturnAngleCmd(addr, raw, sizeof(raw));
     if (len < 0) return len;
     return zdt_pack_can_msg(addr, raw, (size_t)len, msg);
 }
 
 /* 5.6.29 修改碰撞回零返回角度 (X42S/Y42)  Addr + 5C + AC + store + angle(BE16, ×0.1°) + 6B  — 7B */
-static int _raw_write_bump_return_angle(uint8_t addr, uint8_t store, uint16_t angle_x10,
-                                       uint8_t *buf, size_t max_len)
+int zdtBuildWriteBumpReturnAngleCmd(uint8_t addr, uint8_t store, uint16_t angle_x10,
+                                    uint8_t *buf, size_t max_len)
 {
     const size_t need = 7;
     size_t i = 0;
@@ -584,13 +586,13 @@ int zdtCanBuildWriteBumpReturnAngleCmd(uint8_t addr, uint8_t store,
                                       zdt_can_msg_t *msg)
 {
     uint8_t raw[16];
-    int len = _raw_write_bump_return_angle(addr, store, angle_x10, raw, sizeof(raw));
+    int len = zdtBuildWriteBumpReturnAngleCmd(addr, store, angle_x10, raw, sizeof(raw));
     if (len < 0) return len;
     return zdt_pack_can_msg(addr, raw, (size_t)len, msg);
 }
 
 /* 5.6.30 广播读取 ID 地址 (X42S/Y42)  00 + 15 + 6B  — 3B */
-static int _raw_broadcast_read_addr(uint8_t *buf, size_t max_len)
+int zdtBuildBroadcastReadAddrCmd(uint8_t *buf, size_t max_len)
 {
     const size_t need = 3;
     size_t i = 0;
@@ -604,14 +606,14 @@ static int _raw_broadcast_read_addr(uint8_t *buf, size_t max_len)
 int zdtCanBuildBroadcastReadAddrCmd(zdt_can_msg_t *msg)
 {
     uint8_t raw[16];
-    int len = _raw_broadcast_read_addr(raw, sizeof(raw));
+    int len = zdtBuildBroadcastReadAddrCmd(raw, sizeof(raw));
     if (len < 0) return len;
     return zdt_pack_can_msg(ZDT_ADDR_BROADCAST, raw, (size_t)len, msg);
 }
 
 /* 5.6.31 修改锁定修改参数功能 (X42S/Y42)  Addr + D6 + 4B + store + lock_level(0-3) + 6B  — 6B */
-static int _raw_change_param_lock(uint8_t addr, uint8_t store, uint8_t lock_level,
-                                 uint8_t *buf, size_t max_len)
+int zdtBuildChangeParamLockCmd(uint8_t addr, uint8_t store, uint8_t lock_level,
+                               uint8_t *buf, size_t max_len)
 {
     const size_t need = 6;
     size_t i = 0;
@@ -630,7 +632,7 @@ int zdtCanBuildChangeParamLockCmd(uint8_t addr, uint8_t store,
                                  zdt_can_msg_t *msg)
 {
     uint8_t raw[16];
-    int len = _raw_change_param_lock(addr, store, lock_level, raw, sizeof(raw));
+    int len = zdtBuildChangeParamLockCmd(addr, store, lock_level, raw, sizeof(raw));
     if (len < 0) return len;
     return zdt_pack_can_msg(addr, raw, (size_t)len, msg);
 }

@@ -39,6 +39,11 @@ int zdtCanBuildTorqueModeCmd(uint8_t addr, uint8_t dir,
                              uint16_t slope_ma_s, uint16_t current_ma,
                              uint8_t sync, zdt_can_msg_t *msg);
 
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildTorqueModeCmd(uint8_t addr, uint8_t dir,
+                          uint16_t slope_ma_s, uint16_t current_ma,
+                          uint8_t sync, uint8_t *buf, size_t max_len);
+
 /**
  * @brief 5.3.4 力矩模式限速控制 (X)
  *
@@ -58,6 +63,12 @@ int zdtCanBuildTorqueModeSpeedLimitCmd(uint8_t addr, uint8_t dir,
                                        uint16_t max_rpm_x10,
                                        uint8_t sync, zdt_can_msg_t *msg);
 
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildTorqueModeSpeedLimitCmd(uint8_t addr, uint8_t dir,
+                                    uint16_t slope_ma_s, uint16_t current_ma,
+                                    uint16_t max_rpm_x10,
+                                    uint8_t sync, uint8_t *buf, size_t max_len);
+
 /**
  * @brief 5.3.5 速度模式控制 (X)
  *
@@ -74,6 +85,11 @@ int zdtCanBuildTorqueModeSpeedLimitCmd(uint8_t addr, uint8_t dir,
 int zdtCanBuildSpeedModeXCmd(uint8_t addr, uint8_t dir,
                              uint16_t acc_rpm_s, uint16_t rpm_x10,
                              uint8_t sync, zdt_can_msg_t *msg);
+
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildSpeedModeXCmd(uint8_t addr, uint8_t dir,
+                          uint16_t acc_rpm_s, uint16_t rpm_x10,
+                          uint8_t sync, uint8_t *buf, size_t max_len);
 
 /**
  * @brief 5.3.6 速度模式限电流控制 (X)
@@ -94,6 +110,12 @@ int zdtCanBuildSpeedModeXCurrentLimitCmd(uint8_t addr, uint8_t dir,
                                          uint16_t max_current_ma,
                                          uint8_t sync, zdt_can_msg_t *msg);
 
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildSpeedModeXCurrentLimitCmd(uint8_t addr, uint8_t dir,
+                                      uint16_t acc_rpm_s, uint16_t rpm_x10,
+                                      uint16_t max_current_ma,
+                                      uint8_t sync, uint8_t *buf, size_t max_len);
+
 /**
  * @brief 5.3.8 直通限速位置模式控制 (X)
  *
@@ -112,6 +134,12 @@ int zdtCanBuildPosModePassThroughCmd(uint8_t addr, uint8_t dir,
                                      uint16_t rpm_x10, uint32_t pos_angle,
                                      uint8_t move_mode, uint8_t sync,
                                      zdt_can_msg_t *msg);
+
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildPosModePassThroughCmd(uint8_t addr, uint8_t dir,
+                                  uint16_t rpm_x10, uint32_t pos_angle,
+                                  uint8_t move_mode, uint8_t sync,
+                                  uint8_t *buf, size_t max_len);
 
 /**
  * @brief 5.3.9 直通限速位置模式限电流控制 (X)
@@ -134,6 +162,13 @@ int zdtCanBuildPosModePassThroughCurrentLimitCmd(uint8_t addr, uint8_t dir,
                                                  uint16_t max_current_ma,
                                                  zdt_can_msg_t *msg);
 
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildPosModePassThroughCurrentLimitCmd(uint8_t addr, uint8_t dir,
+                                              uint16_t rpm_x10, uint32_t pos_angle,
+                                              uint8_t move_mode, uint8_t sync,
+                                              uint16_t max_current_ma,
+                                              uint8_t *buf, size_t max_len);
+
 /**
  * @brief 5.3.10 梯形曲线加减速位置模式控制 (X)
  *
@@ -155,6 +190,13 @@ int zdtCanBuildTrapezoidPosModeCmd(uint8_t addr, uint8_t dir,
                                    uint16_t max_speed_x10, uint32_t pos_angle,
                                    uint8_t move_mode, uint8_t sync,
                                    zdt_can_msg_t *msg);
+
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildTrapezoidPosModeCmd(uint8_t addr, uint8_t dir,
+                                uint16_t accel_rpm_s, uint16_t decel_rpm_s,
+                                uint16_t max_speed_x10, uint32_t pos_angle,
+                                uint8_t move_mode, uint8_t sync,
+                                uint8_t *buf, size_t max_len);
 
 /**
  * @brief 5.3.11 梯形曲线加减速位置模式限电流控制 (X)
@@ -183,6 +225,17 @@ int zdtCanBuildTrapezoidPosModeCurrentLimitCmd(uint8_t addr, uint8_t dir,
                                               uint16_t max_current_ma,
                                               zdt_can_msg_t *msg);
 
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildTrapezoidPosModeCurrentLimitCmd(uint8_t addr, uint8_t dir,
+                                            uint16_t accel_rpm_s,
+                                            uint16_t decel_rpm_s,
+                                            uint16_t max_speed,
+                                            uint32_t pos_angle,
+                                            uint8_t move_mode,
+                                            uint8_t sync,
+                                            uint16_t max_current_ma,
+                                            uint8_t *buf, size_t max_len);
+
 /* ====================================================================
  *  5.6 修改驱动参数命令 (X 固件特有)
  * ==================================================================== */
@@ -202,6 +255,11 @@ int zdtCanBuildChangePosScaleCmd(uint8_t addr, uint8_t store,
                                  uint8_t scale_10x,
                                  zdt_can_msg_t *msg);
 
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildChangePosScaleCmd(uint8_t addr, uint8_t store,
+                              uint8_t scale_10x,
+                              uint8_t *buf, size_t max_len);
+
 /**
  * @brief 5.6.14 读取 PID 参数 (X)
  *
@@ -212,6 +270,9 @@ int zdtCanBuildChangePosScaleCmd(uint8_t addr, uint8_t store,
  * @return 成功返回写入的 CAN 帧数 (>=1)，失败返回负数错误码 (ZDT_ERR_PARAM)
  */
 int zdtCanBuildReadPidXCmd(uint8_t addr, zdt_can_msg_t *msg);
+
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildReadPidXCmd(uint8_t addr, uint8_t *buf, size_t max_len);
 
 /**
  * @brief 5.6.15 修改 PID 参数 (X)
@@ -231,6 +292,12 @@ int zdtCanBuildWritePidXCmd(uint8_t addr, uint8_t store,
                             uint32_t pTkp, uint32_t pBkp,
                             uint32_t vkp, uint32_t vki,
                             zdt_can_msg_t *msg);
+
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildWritePidXCmd(uint8_t addr, uint8_t store,
+                         uint32_t pTkp, uint32_t pBkp,
+                         uint32_t vkp, uint32_t vki,
+                         uint8_t *buf, size_t max_len);
 
 /* ====================================================================
  *  5.7 上电自动运行命令 (X 固件特有)
@@ -255,6 +322,12 @@ int zdtCanBuildStoreAutoRunXCmd(uint8_t addr, uint8_t store,
                                 uint16_t speed_rpm_x10, uint8_t en_pin_enable,
                                 zdt_can_msg_t *msg);
 
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildStoreAutoRunXCmd(uint8_t addr, uint8_t store,
+                             uint8_t dir, uint16_t acc_rpm_per_s,
+                             uint16_t speed_rpm_x10, uint8_t en_pin_enable,
+                             uint8_t *buf, size_t max_len);
+
 /* ====================================================================
  *  5.8 读取与修改所有驱动参数命令 (X 固件特有)
  * ==================================================================== */
@@ -270,6 +343,9 @@ int zdtCanBuildStoreAutoRunXCmd(uint8_t addr, uint8_t store,
  */
 int zdtCanBuildReadAllStatusXCmd(uint8_t addr, zdt_can_msg_t *msg);
 
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildReadAllStatusXCmd(uint8_t addr, uint8_t *buf, size_t max_len);
+
 /**
  * @brief 5.8.3 读取驱动配置参数 (X)
  *
@@ -280,6 +356,9 @@ int zdtCanBuildReadAllStatusXCmd(uint8_t addr, zdt_can_msg_t *msg);
  * @return 成功返回写入的 CAN 帧数 (>=1)，失败返回负数错误码 (ZDT_ERR_PARAM)
  */
 int zdtCanBuildReadAllConfigXCmd(uint8_t addr, zdt_can_msg_t *msg);
+
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildReadAllConfigXCmd(uint8_t addr, uint8_t *buf, size_t max_len);
 
 /**
  * @brief 5.8.4 修改驱动配置参数 (X)
@@ -331,6 +410,26 @@ int zdtCanBuildWriteAllConfigXCmd(uint8_t addr, uint8_t store,
                                   uint16_t stall_time_ms,
                                   uint16_t pos_window_x10,
                                   zdt_can_msg_t *msg);
+
+/** 同上，输出串口 TTL 原始帧（含地址与末尾校验字节 0x6B），返回帧长，失败返回负数错误码 */
+int zdtBuildWriteAllConfigXCmd(uint8_t addr, uint8_t store,
+                               uint8_t key_lock, uint8_t ctrl_mode,
+                               uint8_t pul_mode, uint8_t com_mode,
+                               uint8_t en_level, uint8_t dir_level,
+                               uint8_t microstep, uint8_t interp,
+                               uint16_t open_current_ma,
+                               uint16_t close_current_ma,
+                               uint16_t close_max_rpm,
+                               uint16_t current_bw_hz,
+                               uint8_t uart_baud, uint8_t can_speed,
+                               uint8_t check_mode, uint8_t reply_mode,
+                               uint8_t angle_scale_10,
+                               uint8_t stall_protect,
+                               uint16_t stall_speed_rpm,
+                               uint16_t stall_current_ma,
+                               uint16_t stall_time_ms,
+                               uint16_t pos_window_x10,
+                               uint8_t *buf, size_t max_len);
 
 #ifdef __cplusplus
 }

@@ -23,13 +23,6 @@
 extern "C" {
 #endif
 
-/* 应答数据字节（手册 4.2.2） */
-#define ZDT_REPLY_OK            0x02    /* 命令正确 */
-#define ZDT_REPLY_DONE          0x9F    /* 动作完成（电机主动返回：F5 / FD / 9A） */
-#define ZDT_REPLY_PARAM_ERR     0xE2    /* 参数错误或条件不满足 */
-#define ZDT_REPLY_FORMAT_ERR    0xEE    /* 命令格式错误 */
-
-#define ZDT_REPLY_MAX_LEN       64      /* zdt_reply_t.data 容量 */
 #define ZDT_REPLY_GAP_MS        20      /* 长度未知时，收到首包后等待后续包的最长间隔 */
 
 typedef struct zdt_twai *zdt_twai_handle_t;
@@ -43,21 +36,6 @@ typedef struct {
     bool       self_test;       /* 发送不需要 ACK（无电机联调用） */
     bool       loopback;        /* 控制器收回自己发出的帧 */
 } zdt_twai_config_t;
-
-/* 电机应答。data 为 Code 之后、校验字节之前的内容。 */
-typedef struct {
-    uint8_t addr;
-    uint8_t code;                       /* 命令的功能码 */
-    uint8_t len;                        /* data 有效字节数 */
-    uint8_t data[ZDT_REPLY_MAX_LEN];
-    uint8_t checksum;                   /* 应答末尾的校验字节 */
-} zdt_reply_t;
-
-/** 状态类应答（data 仅 1 字节）是否为 02 */
-static inline bool zdt_reply_is_ok(const zdt_reply_t *r)
-{
-    return r->len == 1 && r->data[0] == ZDT_REPLY_OK;
-}
 
 /**
  * @brief 创建并启用 TWAI 节点

@@ -15,7 +15,7 @@
 
 /* 5.2.1 触发编码器校准
  * Addr + 06 + 45 + 6B — 4 字节 */
-static int _raw_EncoderCalibrationCmd(uint8_t addr, uint8_t *buf, size_t buf_size)
+int zdtBuildEncoderCalibrationCmd(uint8_t addr, uint8_t *buf, size_t buf_size)
 {
     const size_t need = 4;
     size_t i = 0;
@@ -30,14 +30,14 @@ static int _raw_EncoderCalibrationCmd(uint8_t addr, uint8_t *buf, size_t buf_siz
 int zdtCanBuildEncoderCalibrationCmd(uint8_t addr, zdt_can_msg_t *msg)
 {
     uint8_t raw[4];
-    int n = _raw_EncoderCalibrationCmd(addr, raw, sizeof(raw));
+    int n = zdtBuildEncoderCalibrationCmd(addr, raw, sizeof(raw));
     if (n < 0) return n;
     return zdt_pack_can_msg(addr, raw, (size_t)n, msg);
 }
 
 /* 5.2.2 重启电机 (X42S/Y42)
  * Addr + 08 + 97 + 6B — 4 字节 */
-static int _raw_RestartMotorCmd(uint8_t addr, uint8_t *buf, size_t buf_size)
+int zdtBuildRestartMotorCmd(uint8_t addr, uint8_t *buf, size_t buf_size)
 {
     const size_t need = 4;
     size_t i = 0;
@@ -52,14 +52,14 @@ static int _raw_RestartMotorCmd(uint8_t addr, uint8_t *buf, size_t buf_size)
 int zdtCanBuildRestartMotorCmd(uint8_t addr, zdt_can_msg_t *msg)
 {
     uint8_t raw[4];
-    int n = _raw_RestartMotorCmd(addr, raw, sizeof(raw));
+    int n = zdtBuildRestartMotorCmd(addr, raw, sizeof(raw));
     if (n < 0) return n;
     return zdt_pack_can_msg(addr, raw, (size_t)n, msg);
 }
 
 /* 5.2.3 将当前位置角度清零
  * Addr + 0A + 6D + 6B — 4 字节 */
-static int _raw_ClearCurrentAngleCmd(uint8_t addr, uint8_t *buf, size_t buf_size)
+int zdtBuildClearCurrentAngleCmd(uint8_t addr, uint8_t *buf, size_t buf_size)
 {
     const size_t need = 4;
     size_t i = 0;
@@ -74,14 +74,14 @@ static int _raw_ClearCurrentAngleCmd(uint8_t addr, uint8_t *buf, size_t buf_size
 int zdtCanBuildClearCurrentAngleCmd(uint8_t addr, zdt_can_msg_t *msg)
 {
     uint8_t raw[4];
-    int n = _raw_ClearCurrentAngleCmd(addr, raw, sizeof(raw));
+    int n = zdtBuildClearCurrentAngleCmd(addr, raw, sizeof(raw));
     if (n < 0) return n;
     return zdt_pack_can_msg(addr, raw, (size_t)n, msg);
 }
 
 /* 5.2.4 解除堵转/过热/过流保护
  * Addr + 0E + 52 + 6B — 4 字节 */
-static int _raw_ClearProtectionCmd(uint8_t addr, uint8_t *buf, size_t buf_size)
+int zdtBuildClearProtectionCmd(uint8_t addr, uint8_t *buf, size_t buf_size)
 {
     const size_t need = 4;
     size_t i = 0;
@@ -96,14 +96,14 @@ static int _raw_ClearProtectionCmd(uint8_t addr, uint8_t *buf, size_t buf_size)
 int zdtCanBuildClearProtectionCmd(uint8_t addr, zdt_can_msg_t *msg)
 {
     uint8_t raw[4];
-    int n = _raw_ClearProtectionCmd(addr, raw, sizeof(raw));
+    int n = zdtBuildClearProtectionCmd(addr, raw, sizeof(raw));
     if (n < 0) return n;
     return zdt_pack_can_msg(addr, raw, (size_t)n, msg);
 }
 
 /* 5.2.5 恢复出厂设置
  * Addr + 0F + 5F + 6B — 4 字节 */
-static int _raw_FactoryResetCmd(uint8_t addr, uint8_t *buf, size_t buf_size)
+int zdtBuildFactoryResetCmd(uint8_t addr, uint8_t *buf, size_t buf_size)
 {
     const size_t need = 4;
     size_t i = 0;
@@ -118,7 +118,7 @@ static int _raw_FactoryResetCmd(uint8_t addr, uint8_t *buf, size_t buf_size)
 int zdtCanBuildFactoryResetCmd(uint8_t addr, zdt_can_msg_t *msg)
 {
     uint8_t raw[4];
-    int n = _raw_FactoryResetCmd(addr, raw, sizeof(raw));
+    int n = zdtBuildFactoryResetCmd(addr, raw, sizeof(raw));
     if (n < 0) return n;
     return zdt_pack_can_msg(addr, raw, (size_t)n, msg);
 }
@@ -130,8 +130,8 @@ int zdtCanBuildFactoryResetCmd(uint8_t addr, zdt_can_msg_t *msg)
 /* 5.3.1 多电机命令 (广播)
  * 00 + AA + 总字节数(BE16) + 子命令序列 + 6B — (5 + sub_cmds_len) 字节
  * 注：广播命令，打包时 addr 固定使用 ZDT_ADDR_BROADCAST */
-static int _raw_MultiMotorCmd(const uint8_t *sub_cmds, size_t sub_cmds_len,
-                              uint8_t *buf, size_t buf_size)
+int zdtBuildMultiMotorCmd(const uint8_t *sub_cmds, size_t sub_cmds_len,
+                          uint8_t *buf, size_t buf_size)
 {
     if (!sub_cmds || sub_cmds_len == 0) return ZDT_ERR_PARAM;
     const size_t need = 5 + sub_cmds_len;
@@ -157,15 +157,15 @@ int zdtCanBuildMultiMotorCmd(const uint8_t *sub_cmds, size_t sub_cmds_len,
         return ZDT_ERR_BUF_TOO_SMALL;
     }
     uint8_t raw[1 + ZDT_CAN_MAX_FRAMES * 8];
-    int n = _raw_MultiMotorCmd(sub_cmds, sub_cmds_len, raw, sizeof(raw));
+    int n = zdtBuildMultiMotorCmd(sub_cmds, sub_cmds_len, raw, sizeof(raw));
     if (n < 0) return n;
     return zdt_pack_can_msg(ZDT_ADDR_BROADCAST, raw, (size_t)n, msg);
 }
 
 /* 5.3.2 电机使能控制
  * Addr + F3 + AB + enable + sync + 6B — 6 字节 */
-static int _raw_MotorEnableCmd(uint8_t addr, uint8_t enable, uint8_t sync,
-                               uint8_t *buf, size_t buf_size)
+int zdtBuildMotorEnableCmd(uint8_t addr, uint8_t enable, uint8_t sync,
+                           uint8_t *buf, size_t buf_size)
 {
     const size_t need = 6;
     size_t i = 0;
@@ -183,15 +183,15 @@ int zdtCanBuildMotorEnableCmd(uint8_t addr, uint8_t enable, uint8_t sync,
                              zdt_can_msg_t *msg)
 {
     uint8_t raw[6];
-    int n = _raw_MotorEnableCmd(addr, enable, sync, raw, sizeof(raw));
+    int n = zdtBuildMotorEnableCmd(addr, enable, sync, raw, sizeof(raw));
     if (n < 0) return n;
     return zdt_pack_can_msg(addr, raw, (size_t)n, msg);
 }
 
 /* 5.3.13 立即停止
  * Addr + FE + 98 + sync + 6B — 5 字节 */
-static int _raw_ImmediateStopCmd(uint8_t addr, uint8_t sync,
-                                 uint8_t *buf, size_t buf_size)
+int zdtBuildImmediateStopCmd(uint8_t addr, uint8_t sync,
+                             uint8_t *buf, size_t buf_size)
 {
     const size_t need = 5;
     size_t i = 0;
@@ -208,14 +208,14 @@ int zdtCanBuildImmediateStopCmd(uint8_t addr, uint8_t sync,
                                zdt_can_msg_t *msg)
 {
     uint8_t raw[5];
-    int n = _raw_ImmediateStopCmd(addr, sync, raw, sizeof(raw));
+    int n = zdtBuildImmediateStopCmd(addr, sync, raw, sizeof(raw));
     if (n < 0) return n;
     return zdt_pack_can_msg(addr, raw, (size_t)n, msg);
 }
 
 /* 5.3.14 触发同步运动
  * Addr + FF + 66 + 6B — 4 字节 */
-static int _raw_SyncMotionCmd(uint8_t addr, uint8_t *buf, size_t buf_size)
+int zdtBuildSyncMotionCmd(uint8_t addr, uint8_t *buf, size_t buf_size)
 {
     const size_t need = 4;
     size_t i = 0;
@@ -230,7 +230,7 @@ static int _raw_SyncMotionCmd(uint8_t addr, uint8_t *buf, size_t buf_size)
 int zdtCanBuildSyncMotionCmd(uint8_t addr, zdt_can_msg_t *msg)
 {
     uint8_t raw[4];
-    int n = _raw_SyncMotionCmd(addr, raw, sizeof(raw));
+    int n = zdtBuildSyncMotionCmd(addr, raw, sizeof(raw));
     if (n < 0) return n;
     return zdt_pack_can_msg(addr, raw, (size_t)n, msg);
 }
@@ -241,8 +241,8 @@ int zdtCanBuildSyncMotionCmd(uint8_t addr, zdt_can_msg_t *msg)
 
 /* 5.4.1 设置单圈回零的零点位置
  * Addr + 93 + 88 + store + 6B — 5 字节 */
-static int _raw_SetSingleTurnZeroCmd(uint8_t addr, uint8_t store,
-                                     uint8_t *buf, size_t buf_size)
+int zdtBuildSetSingleTurnZeroCmd(uint8_t addr, uint8_t store,
+                                 uint8_t *buf, size_t buf_size)
 {
     const size_t need = 5;
     size_t i = 0;
@@ -259,15 +259,15 @@ int zdtCanBuildSetSingleTurnZeroCmd(uint8_t addr, uint8_t store,
                                    zdt_can_msg_t *msg)
 {
     uint8_t raw[5];
-    int n = _raw_SetSingleTurnZeroCmd(addr, store, raw, sizeof(raw));
+    int n = zdtBuildSetSingleTurnZeroCmd(addr, store, raw, sizeof(raw));
     if (n < 0) return n;
     return zdt_pack_can_msg(addr, raw, (size_t)n, msg);
 }
 
 /* 5.4.2 触发回零
  * Addr + 9A + homing_mode + sync + 6B — 5 字节 */
-static int _raw_TriggerHomingCmd(uint8_t addr, uint8_t homing_mode,
-                                 uint8_t sync, uint8_t *buf, size_t buf_size)
+int zdtBuildTriggerHomingCmd(uint8_t addr, uint8_t homing_mode,
+                             uint8_t sync, uint8_t *buf, size_t buf_size)
 {
     const size_t need = 5;
     size_t i = 0;
@@ -284,14 +284,14 @@ int zdtCanBuildTriggerHomingCmd(uint8_t addr, uint8_t homing_mode,
                                uint8_t sync, zdt_can_msg_t *msg)
 {
     uint8_t raw[5];
-    int n = _raw_TriggerHomingCmd(addr, homing_mode, sync, raw, sizeof(raw));
+    int n = zdtBuildTriggerHomingCmd(addr, homing_mode, sync, raw, sizeof(raw));
     if (n < 0) return n;
     return zdt_pack_can_msg(addr, raw, (size_t)n, msg);
 }
 
 /* 5.4.3 强制中断并退出回零
  * Addr + 9C + 48 + 6B — 4 字节 */
-static int _raw_AbortHomingCmd(uint8_t addr, uint8_t *buf, size_t buf_size)
+int zdtBuildAbortHomingCmd(uint8_t addr, uint8_t *buf, size_t buf_size)
 {
     const size_t need = 4;
     size_t i = 0;
@@ -306,14 +306,14 @@ static int _raw_AbortHomingCmd(uint8_t addr, uint8_t *buf, size_t buf_size)
 int zdtCanBuildAbortHomingCmd(uint8_t addr, zdt_can_msg_t *msg)
 {
     uint8_t raw[4];
-    int n = _raw_AbortHomingCmd(addr, raw, sizeof(raw));
+    int n = zdtBuildAbortHomingCmd(addr, raw, sizeof(raw));
     if (n < 0) return n;
     return zdt_pack_can_msg(addr, raw, (size_t)n, msg);
 }
 
 /* 5.4.4 读取回零状态标志
  * Addr + 3B + 6B — 3 字节 */
-static int _raw_ReadHomingStatusCmd(uint8_t addr, uint8_t *buf, size_t buf_size)
+int zdtBuildReadHomingStatusCmd(uint8_t addr, uint8_t *buf, size_t buf_size)
 {
     const size_t need = 3;
     size_t i = 0;
@@ -327,14 +327,14 @@ static int _raw_ReadHomingStatusCmd(uint8_t addr, uint8_t *buf, size_t buf_size)
 int zdtCanBuildReadHomingStatusCmd(uint8_t addr, zdt_can_msg_t *msg)
 {
     uint8_t raw[3];
-    int n = _raw_ReadHomingStatusCmd(addr, raw, sizeof(raw));
+    int n = zdtBuildReadHomingStatusCmd(addr, raw, sizeof(raw));
     if (n < 0) return n;
     return zdt_pack_can_msg(addr, raw, (size_t)n, msg);
 }
 
 /* 5.4.5 读取回零参数
  * Addr + 22 + 6B — 3 字节 */
-static int _raw_ReadHomingParamsCmd(uint8_t addr, uint8_t *buf, size_t buf_size)
+int zdtBuildReadHomingParamsCmd(uint8_t addr, uint8_t *buf, size_t buf_size)
 {
     const size_t need = 3;
     size_t i = 0;
@@ -348,7 +348,7 @@ static int _raw_ReadHomingParamsCmd(uint8_t addr, uint8_t *buf, size_t buf_size)
 int zdtCanBuildReadHomingParamsCmd(uint8_t addr, zdt_can_msg_t *msg)
 {
     uint8_t raw[3];
-    int n = _raw_ReadHomingParamsCmd(addr, raw, sizeof(raw));
+    int n = zdtBuildReadHomingParamsCmd(addr, raw, sizeof(raw));
     if (n < 0) return n;
     return zdt_pack_can_msg(addr, raw, (size_t)n, msg);
 }
@@ -356,14 +356,14 @@ int zdtCanBuildReadHomingParamsCmd(uint8_t addr, zdt_can_msg_t *msg)
 /* 5.4.6 修改回零参数
  * Addr + 4C + AE + store + mode + dir + 速度(BE16) + 超时(BE32)
  * + 碰撞转速(BE16) + 碰撞电流(BE16) + 碰撞时间(BE16) + auto_trigger + 6B — 20 字节 */
-static int _raw_WriteHomingParamsCmd(uint8_t addr, uint8_t store,
-                                     uint8_t homing_mode, uint8_t dir,
-                                     uint16_t rpm, uint32_t timeout_ms,
-                                     uint16_t bump_speed_rpm,
-                                     uint16_t bump_current_ma,
-                                     uint16_t bump_time_ms,
-                                     uint8_t auto_trigger,
-                                     uint8_t *buf, size_t buf_size)
+int zdtBuildWriteHomingParamsCmd(uint8_t addr, uint8_t store,
+                                 uint8_t homing_mode, uint8_t dir,
+                                 uint16_t rpm, uint32_t timeout_ms,
+                                 uint16_t bump_speed_rpm,
+                                 uint16_t bump_current_ma,
+                                 uint16_t bump_time_ms,
+                                 uint8_t auto_trigger,
+                                 uint8_t *buf, size_t buf_size)
 {
     const size_t need = 20;
     size_t i = 0;
@@ -394,7 +394,7 @@ int zdtCanBuildWriteHomingParamsCmd(uint8_t addr, uint8_t store,
                                    zdt_can_msg_t *msg)
 {
     uint8_t raw[20];
-    int n = _raw_WriteHomingParamsCmd(addr, store, homing_mode, dir, rpm, timeout_ms,
+    int n = zdtBuildWriteHomingParamsCmd(addr, store, homing_mode, dir, rpm, timeout_ms,
                                       bump_speed_rpm, bump_current_ma, bump_time_ms,
                                       auto_trigger, raw, sizeof(raw));
     if (n < 0) return n;

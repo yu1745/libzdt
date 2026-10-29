@@ -14,9 +14,9 @@
 
 /* 5.3.7 速度模式控制 (Emm)
  * Addr + F6 + 方向 + 速度(BE16) + 加速度(1B) + 同步 + 6B — 8B */
-static int _raw_SpeedModeEmmCmd(uint8_t addr, uint8_t dir, uint16_t rpm,
-                               uint8_t acc, uint8_t sync,
-                               uint8_t *buf, size_t buf_size)
+int zdtBuildSpeedModeEmmCmd(uint8_t addr, uint8_t dir, uint16_t rpm,
+                            uint8_t acc, uint8_t sync,
+                            uint8_t *buf, size_t buf_size)
 {
     const size_t need = 8;
     size_t i = 0;
@@ -36,17 +36,17 @@ int zdtCanBuildSpeedModeEmmCmd(uint8_t addr, uint8_t dir, uint16_t rpm,
                               zdt_can_msg_t *msg)
 {
     uint8_t raw[8];
-    int n = _raw_SpeedModeEmmCmd(addr, dir, rpm, acc, sync, raw, sizeof(raw));
+    int n = zdtBuildSpeedModeEmmCmd(addr, dir, rpm, acc, sync, raw, sizeof(raw));
     if (n < 0) return n;
     return zdt_pack_can_msg(addr, raw, (size_t)n, msg);
 }
 
 /* 5.3.12 位置模式控制 (Emm)
  * Addr + FD + 方向 + 速度(BE16) + 加速度(1B；0=不使用曲线加减速) + 脉冲数(BE32) + 运动模式 + 同步 + 6B — 13B */
-static int _raw_PosModeEmmCmd(uint8_t addr, uint8_t dir, uint16_t rpm,
-                             uint8_t acc, uint32_t pulses,
-                             uint8_t move_mode, uint8_t sync,
-                             uint8_t *buf, size_t buf_size)
+int zdtBuildPosModeEmmCmd(uint8_t addr, uint8_t dir, uint16_t rpm,
+                          uint8_t acc, uint32_t pulses,
+                          uint8_t move_mode, uint8_t sync,
+                          uint8_t *buf, size_t buf_size)
 {
     const size_t need = 13;
     size_t i = 0;
@@ -69,7 +69,7 @@ int zdtCanBuildPosModeEmmCmd(uint8_t addr, uint8_t dir, uint16_t rpm,
                              zdt_can_msg_t *msg)
 {
     uint8_t raw[13];
-    int n = _raw_PosModeEmmCmd(addr, dir, rpm, acc, pulses, move_mode, sync, raw, sizeof(raw));
+    int n = zdtBuildPosModeEmmCmd(addr, dir, rpm, acc, pulses, move_mode, sync, raw, sizeof(raw));
     if (n < 0) return n;
     return zdt_pack_can_msg(addr, raw, (size_t)n, msg);
 }
@@ -80,9 +80,9 @@ int zdtCanBuildPosModeEmmCmd(uint8_t addr, uint8_t dir, uint16_t rpm,
 
 /* 5.6.11 修改命令速度值是否缩小 10 倍输入 (Emm)
  * Addr + 4F + 71 + store + scale + 6B — 6B */
-static int _raw_ChangeSpeedScaleCmd(uint8_t addr, uint8_t store,
-                                    uint8_t scale_10x,
-                                    uint8_t *buf, size_t buf_size)
+int zdtBuildChangeSpeedScaleCmd(uint8_t addr, uint8_t store,
+                                uint8_t scale_10x,
+                                uint8_t *buf, size_t buf_size)
 {
     const size_t need = 6;
     size_t i = 0;
@@ -101,14 +101,14 @@ int zdtCanBuildChangeSpeedScaleCmd(uint8_t addr, uint8_t store,
                                    zdt_can_msg_t *msg)
 {
     uint8_t raw[6];
-    int n = _raw_ChangeSpeedScaleCmd(addr, store, scale_10x, raw, sizeof(raw));
+    int n = zdtBuildChangeSpeedScaleCmd(addr, store, scale_10x, raw, sizeof(raw));
     if (n < 0) return n;
     return zdt_pack_can_msg(addr, raw, (size_t)n, msg);
 }
 
 /* 5.6.16 读取 PID 参数 (Emm)
  * Addr + 21 + 6B — 3B */
-static int _raw_ReadPidEmmCmd(uint8_t addr, uint8_t *buf, size_t buf_size)
+int zdtBuildReadPidEmmCmd(uint8_t addr, uint8_t *buf, size_t buf_size)
 {
     const size_t need = 3;
     size_t i = 0;
@@ -122,16 +122,16 @@ static int _raw_ReadPidEmmCmd(uint8_t addr, uint8_t *buf, size_t buf_size)
 int zdtCanBuildReadPidEmmCmd(uint8_t addr, zdt_can_msg_t *msg)
 {
     uint8_t raw[3];
-    int n = _raw_ReadPidEmmCmd(addr, raw, sizeof(raw));
+    int n = zdtBuildReadPidEmmCmd(addr, raw, sizeof(raw));
     if (n < 0) return n;
     return zdt_pack_can_msg(addr, raw, (size_t)n, msg);
 }
 
 /* 5.6.17 修改 PID 参数 (Emm)
  * Addr + 4A + C3 + store + Kp(BE32) + Ki(BE32) + Kd(BE32) + 6B — 17B */
-static int _raw_WritePidEmmCmd(uint8_t addr, uint8_t store,
-                              uint32_t kp, uint32_t ki, uint32_t kd,
-                              uint8_t *buf, size_t buf_size)
+int zdtBuildWritePidEmmCmd(uint8_t addr, uint8_t store,
+                           uint32_t kp, uint32_t ki, uint32_t kd,
+                           uint8_t *buf, size_t buf_size)
 {
     const size_t need = 17;
     size_t i = 0;
@@ -152,7 +152,7 @@ int zdtCanBuildWritePidEmmCmd(uint8_t addr, uint8_t store,
                               zdt_can_msg_t *msg)
 {
     uint8_t raw[17];
-    int n = _raw_WritePidEmmCmd(addr, store, kp, ki, kd, raw, sizeof(raw));
+    int n = zdtBuildWritePidEmmCmd(addr, store, kp, ki, kd, raw, sizeof(raw));
     if (n < 0) return n;
     return zdt_pack_can_msg(addr, raw, (size_t)n, msg);
 }
@@ -163,10 +163,10 @@ int zdtCanBuildWritePidEmmCmd(uint8_t addr, uint8_t store,
 
 /* 5.7.2 存储一组速度参数，上电自动运行 (Emm)
  * Addr + F7 + 1C + store + dir + speed(BE16) + acc(1B) + en + 6B — 10B */
-static int _raw_StoreAutoRunEmmCmd(uint8_t addr, uint8_t store,
-                                   uint8_t dir, uint16_t speed_rpm,
-                                   uint8_t acc_level, uint8_t en_pin_enable,
-                                   uint8_t *buf, size_t buf_size)
+int zdtBuildStoreAutoRunEmmCmd(uint8_t addr, uint8_t store,
+                               uint8_t dir, uint16_t speed_rpm,
+                               uint8_t acc_level, uint8_t en_pin_enable,
+                               uint8_t *buf, size_t buf_size)
 {
     const size_t need = 10;
     size_t i = 0;
@@ -189,7 +189,7 @@ int zdtCanBuildStoreAutoRunEmmCmd(uint8_t addr, uint8_t store,
                                   zdt_can_msg_t *msg)
 {
     uint8_t raw[10];
-    int n = _raw_StoreAutoRunEmmCmd(addr, store, dir, speed_rpm, acc_level, en_pin_enable, raw, sizeof(raw));
+    int n = zdtBuildStoreAutoRunEmmCmd(addr, store, dir, speed_rpm, acc_level, en_pin_enable, raw, sizeof(raw));
     if (n < 0) return n;
     return zdt_pack_can_msg(addr, raw, (size_t)n, msg);
 }
@@ -200,7 +200,7 @@ int zdtCanBuildStoreAutoRunEmmCmd(uint8_t addr, uint8_t store,
 
 /* 5.8.2 读取系统状态参数 (Emm)
  * Addr + 43 + 7A + 6B — 4B */
-static int _raw_ReadAllStatusEmmCmd(uint8_t addr, uint8_t *buf, size_t buf_size)
+int zdtBuildReadAllStatusEmmCmd(uint8_t addr, uint8_t *buf, size_t buf_size)
 {
     const size_t need = 4;
     size_t i = 0;
@@ -215,14 +215,14 @@ static int _raw_ReadAllStatusEmmCmd(uint8_t addr, uint8_t *buf, size_t buf_size)
 int zdtCanBuildReadAllStatusEmmCmd(uint8_t addr, zdt_can_msg_t *msg)
 {
     uint8_t raw[4];
-    int n = _raw_ReadAllStatusEmmCmd(addr, raw, sizeof(raw));
+    int n = zdtBuildReadAllStatusEmmCmd(addr, raw, sizeof(raw));
     if (n < 0) return n;
     return zdt_pack_can_msg(addr, raw, (size_t)n, msg);
 }
 
 /* 5.8.5 读取驱动配置参数 (Emm)
  * Addr + 42 + 6C + 6B — 4B */
-static int _raw_ReadAllConfigEmmCmd(uint8_t addr, uint8_t *buf, size_t buf_size)
+int zdtBuildReadAllConfigEmmCmd(uint8_t addr, uint8_t *buf, size_t buf_size)
 {
     const size_t need = 4;
     size_t i = 0;
@@ -237,29 +237,29 @@ static int _raw_ReadAllConfigEmmCmd(uint8_t addr, uint8_t *buf, size_t buf_size)
 int zdtCanBuildReadAllConfigEmmCmd(uint8_t addr, zdt_can_msg_t *msg)
 {
     uint8_t raw[4];
-    int n = _raw_ReadAllConfigEmmCmd(addr, raw, sizeof(raw));
+    int n = zdtBuildReadAllConfigEmmCmd(addr, raw, sizeof(raw));
     if (n < 0) return n;
     return zdt_pack_can_msg(addr, raw, (size_t)n, msg);
 }
 
 /* 5.8.6 修改驱动配置参数 (Emm)
  * Addr + 48 + D1 + 参数列表... + 6B — 33B */
-static int _raw_WriteAllConfigEmmCmd(uint8_t addr, uint8_t store,
-                                     uint8_t motor_type,
-                                     uint8_t pul_mode, uint8_t com_mode,
-                                     uint8_t en_level, uint8_t dir_level,
-                                     uint8_t microstep, uint8_t interp,
-                                     uint16_t open_current_ma,
-                                     uint16_t stall_current_ma,
-                                     uint16_t max_voltage_code,
-                                     uint8_t uart_baud, uint8_t can_speed,
-                                     uint8_t check_mode, uint8_t reply_mode,
-                                     uint8_t stall_protect,
-                                     uint16_t stall_speed_rpm,
-                                     uint16_t stall_current_ma2,
-                                     uint16_t stall_time_ms,
-                                     uint16_t pos_window,
-                                     uint8_t *buf, size_t buf_size)
+int zdtBuildWriteAllConfigEmmCmd(uint8_t addr, uint8_t store,
+                                 uint8_t motor_type,
+                                 uint8_t pul_mode, uint8_t com_mode,
+                                 uint8_t en_level, uint8_t dir_level,
+                                 uint8_t microstep, uint8_t interp,
+                                 uint16_t open_current_ma,
+                                 uint16_t stall_current_ma,
+                                 uint16_t max_voltage_code,
+                                 uint8_t uart_baud, uint8_t can_speed,
+                                 uint8_t check_mode, uint8_t reply_mode,
+                                 uint8_t stall_protect,
+                                 uint16_t stall_speed_rpm,
+                                 uint16_t stall_current_ma2,
+                                 uint16_t stall_time_ms,
+                                 uint16_t pos_window,
+                                 uint8_t *buf, size_t buf_size)
 {
     const size_t need = 33;
     size_t i = 0;
@@ -311,7 +311,7 @@ int zdtCanBuildWriteAllConfigEmmCmd(uint8_t addr, uint8_t store,
                                     zdt_can_msg_t *msg)
 {
     uint8_t raw[33];
-    int n = _raw_WriteAllConfigEmmCmd(addr, store, motor_type, pul_mode, com_mode,
+    int n = zdtBuildWriteAllConfigEmmCmd(addr, store, motor_type, pul_mode, com_mode,
                                       en_level, dir_level, microstep, interp,
                                       open_current_ma, stall_current_ma, max_voltage_code,
                                       uart_baud, can_speed, check_mode, reply_mode,
