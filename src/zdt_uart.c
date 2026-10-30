@@ -16,6 +16,8 @@
 #define ZDT_UART_TX_MAX         (ZDT_TTL_MAX_FRAME * 4)   /* 多电机命令可串多条子命令 */
 #define ZDT_UART_DEFAULT_WRITE_GAP_US   5000
 #define ZDT_UART_DEFAULT_STORE_GAP_US   100000
+#define ZDT_UART_DEFAULT_FRAME_GAP_US   100
+#define ZDT_UART_BROADCAST_GAP_US       300   /* 广播帧后电机都在处理，需要更久 */
 
 static const char *TAG = "zdt_uart";
 
@@ -27,6 +29,7 @@ struct zdt_uart {
     zdt_uart_event_cb_t cb;
     void               *cb_ctx;
     uint32_t            write_gap_us;
+    uint32_t            frame_gap_us;
     uint32_t            store_gap_us;
     bool                last_store;      /* 最近发出的修改参数命令带存储标志 */
     int64_t             hold_until_us;   /* 修改参数命令应答后，此前不发送 */
@@ -53,6 +56,7 @@ esp_err_t zdt_uart_new(const zdt_uart_config_t *config, zdt_uart_handle_t *handl
     h->checksum = config->checksum;
     h->firmware = config->firmware;
     h->write_gap_us = config->write_gap_us ? config->write_gap_us : ZDT_UART_DEFAULT_WRITE_GAP_US;
+    h->frame_gap_us = config->frame_gap_us ? config->frame_gap_us : ZDT_UART_DEFAULT_FRAME_GAP_US;
     h->store_gap_us = config->store_gap_us ? config->store_gap_us : ZDT_UART_DEFAULT_STORE_GAP_US;
     h->lock = xSemaphoreCreateMutex();
     if (!h->lock) {
@@ -81,6 +85,19 @@ esp_err_t zdt_uart_new(const zdt_uart_config_t *config, zdt_uart_handle_t *handl
     }
     *handle_ret = h;
     return ESP_OK;
+}
+
+esp_err_t zdt_uart_set_baud_rate(zdt_uart_handle_t handle, uint32_t baud_rate)
+{
+    if (!handle || !baud_rate) return ESP_ERR_INVALID_ARG;
+    xSemaphoreTake(handle->lock, portMAX_DELAY);
+    /* 等发完再切，丢掉旧波特率下的残余字节 */
+    esp_err_t err = uart_wait_tx_done(handle->port, ms_to_ticks(50));
+    if (err == ESP_OK) err = uart_set_baudrate(handle->port, baud_rate);
+    uart_flush_input(handle->port);
+    handle->rx_len = 0;
+    xSemaphoreGive(handle->lock);
+    return err;
 }
 
 esp_err_t zdt_uart_del(zdt_uart_handle_t handle)
@@ -121,6 +138,13 @@ static bool is_store_write(const uint8_t *frame, size_t len)
     return len > 4 && is_param_write(frame[1]) && frame[1] != 0x50 && frame[3] == ZDT_STORE_YES;
 }
 
+/* 总线上有帧（发出或收到）后，下一帧至少隔 gap_us 再发 */
+static void hold_after_frame(struct zdt_uart *h, uint32_t gap_us)
+{
+    int64_t t = esp_timer_get_time() + gap_us;
+    if (t > h->hold_until_us) h->hold_until_us = t;
+}
+
 static void wait_hold(struct zdt_uart *h)
 {
     for (;;) {
@@ -139,7 +163,10 @@ static esp_err_t send_locked(struct zdt_uart *h, const uint8_t *frame, size_t le
     memcpy(h->tx, frame, len);
     zdt_frame_set_checksum(h->tx, len, h->checksum);
     if (uart_write_bytes(h->port, h->tx, len) != (int)len) return ESP_FAIL;
-    return uart_wait_tx_done(h->port, ms_to_ticks(timeout_ms));
+    esp_err_t err = uart_wait_tx_done(h->port, ms_to_ticks(timeout_ms));
+    hold_after_frame(h, frame[0] == ZDT_ADDR_BROADCAST && h->frame_gap_us < ZDT_UART_BROADCAST_GAP_US
+                            ? ZDT_UART_BROADCAST_GAP_US : h->frame_gap_us);
+    return err;
 }
 
 esp_err_t zdt_uart_send(zdt_uart_handle_t handle, const uint8_t *frame, size_t len, int timeout_ms)
@@ -166,6 +193,7 @@ static esp_err_t next_frame(struct zdt_uart *h, int64_t deadline_us, zdt_reply_t
         while (h->rx_len) {
             int r = zdt_ttl_parse(h->rx, h->rx_len, h->checksum, h->firmware, out);
             if (r > 0) {
+                hold_after_frame(h, h->frame_gap_us);
                 h->rx_len -= (size_t)r;
                 memmove(h->rx, h->rx + r, h->rx_len);
                 return ESP_OK;

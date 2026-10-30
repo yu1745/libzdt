@@ -44,6 +44,9 @@ typedef struct {
                                       （真机在应答后约 1-4 ms 内不接收新命令） */
     uint32_t       store_gap_us;   /* 同上，但命令带存储标志（第 4 字节 01）时用，0 表示 100000
                                       （真机多为 4-7 ms，擦写 Flash 时约 70 ms） */
+    uint32_t       frame_gap_us;   /* 总线上每帧（发出或收到）后到下一次发送的最小空闲，0 表示 100；
+                                      广播帧（地址 0）后至少 300。921600 下真机：应答后紧接着发下一帧
+                                      约 1/4 超时，隔 100 us 即无失败；广播同步（FF 66）后需约 300 us */
 } zdt_uart_config_t;
 
 /**
@@ -51,6 +54,14 @@ typedef struct {
  * @return ESP_OK；参数错误 ESP_ERR_INVALID_ARG；内存不足 ESP_ERR_NO_MEM；其余为 UART 驱动错误码
  */
 esp_err_t zdt_uart_new(const zdt_uart_config_t *config, zdt_uart_handle_t *handle_ret);
+
+/**
+ * @brief 切换本端波特率（电机侧用 5.8.6 驱动配置的波特率字段修改）
+ *
+ * 等待发送完成后切换，清空接收缓冲。与 transact 等互斥，可在任意任务调用。
+ * @return ESP_OK；参数错误 ESP_ERR_INVALID_ARG；其余为 UART 驱动错误码
+ */
+esp_err_t zdt_uart_set_baud_rate(zdt_uart_handle_t handle, uint32_t baud_rate);
 
 /** 删除 UART 驱动，释放句柄 */
 esp_err_t zdt_uart_del(zdt_uart_handle_t handle);
